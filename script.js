@@ -170,6 +170,9 @@ function updateUI() {
         const slot = document.getElementById(`trick-${pos}`);
         slot.appendChild(renderCard(play.card, false));
     });
+
+    document.getElementById('ns-score').textContent = game.teams[0].tricksWon;
+    document.getElementById('ew-score').textContent = game.teams[1].tricksWon;
 }
 
 document.getElementById('start-game-btn').addEventListener('click', () => {

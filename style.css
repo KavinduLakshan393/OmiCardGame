@@ -174,5 +174,25 @@ body {
     transition: background 0.2s;
 }
 .suit-btn:hover {
+.suit-btn:hover {
     background: #eee;
+}
+
+@keyframes playCard {
+    from { opacity: 0; transform: scale(1.2); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.trick-slot .card {
+    animation: playCard 0.3s ease-out;
+}
+
+#scoreboard {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.5);
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 1.2rem;
 }
