@@ -8,51 +8,99 @@
 </head>
 <body>
     <div id="game-board">
-        <div id="scoreboard">
-            <div>NS Tricks: <span id="ns-score">0</span></div>
-            <div>EW Tricks: <span id="ew-score">0</span></div>
-        </div>
-        <div id="top-player" class="player-area">
-            <h3 class="player-name">Player 3 (Partner)</h3>
-            <div id="p2-hand" class="hand"></div>
+        <!-- Header Info & Scoreboard -->
+        <header id="game-header">
+            <div id="scoreboard">
+                <div class="score-box">
+                    <span class="score-label">NS (You & Partner)</span>
+                    <span class="score-value"><span id="ns-tricks">0</span> Tricks | <span id="ns-tokens">0</span> Tokens</span>
+                </div>
+                <div id="status-banner">
+                    <span id="status-message">Click "Start Game" to begin!</span>
+                </div>
+                <div class="score-box">
+                    <span class="score-label">EW (Opponents)</span>
+                    <span class="score-value"><span id="ew-tricks">0</span> Tricks | <span id="ew-tokens">0</span> Tokens</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Top Player (Partner - Player 2) -->
+        <div id="player-2" class="player-area top-player">
+            <div class="player-info">
+                <span class="player-name">Partner (North)</span>
+                <span class="turn-badge hidden">Thinking...</span>
+            </div>
+            <div id="p2-hand" class="hand horizontal-hand"></div>
         </div>
         
+        <!-- Middle Row: Left Player, Center Trick Table, Right Player -->
         <div class="middle-row">
-            <div id="left-player" class="player-area side-player">
-                <h3 class="player-name">Player 2 (Left)</h3>
-                <div id="p1-hand" class="hand"></div>
+            <!-- Left Player (Opponent 1 - Player 1) -->
+            <div id="player-1" class="player-area side-player left-player">
+                <div class="player-info">
+                    <span class="player-name">West</span>
+                    <span class="turn-badge hidden">Thinking...</span>
+                </div>
+                <div id="p1-hand" class="hand vertical-hand"></div>
             </div>
             
+            <!-- Center Trick Table -->
             <div id="trick-area">
+                <div class="trick-table-bg"></div>
                 <div class="trick-slot" id="trick-top"></div>
                 <div class="trick-slot" id="trick-left"></div>
                 <div class="trick-slot" id="trick-right"></div>
                 <div class="trick-slot" id="trick-bottom"></div>
-                <div id="trump-indicator">Trump: <span id="trump-suit">-</span></div>
+                
+                <div id="trump-display">
+                    <span class="trump-title">TRUMP</span>
+                    <span id="trump-suit-icon">-</span>
+                    <span id="trump-caller-name"></span>
+                </div>
             </div>
 
-            <div id="right-player" class="player-area side-player">
-                <h3 class="player-name">Player 4 (Right)</h3>
-                <div id="p3-hand" class="hand"></div>
+            <!-- Right Player (Opponent 2 - Player 3) -->
+            <div id="player-3" class="player-area side-player right-player">
+                <div class="player-info">
+                    <span class="player-name">East</span>
+                    <span class="turn-badge hidden">Thinking...</span>
+                </div>
+                <div id="p3-hand" class="hand vertical-hand"></div>
             </div>
         </div>
         
-        <div id="bottom-player" class="player-area">
-            <h3 class="player-name">You</h3>
-            <div id="p0-hand" class="hand"></div>
-            <div id="action-area">
-                <button id="start-game-btn" class="btn">Start Game</button>
+        <!-- Bottom Player (You - Player 0) -->
+        <div id="player-0" class="player-area bottom-player">
+            <div id="action-bar">
+                <button id="start-game-btn" class="btn primary-btn">Start Game</button>
+            </div>
+            <div id="p0-hand" class="hand horizontal-hand"></div>
+            <div class="player-info">
+                <span class="player-name">You (South)</span>
+                <span class="turn-badge hidden">Your Turn!</span>
             </div>
         </div>
         
+        <!-- Trump Selection Modal -->
         <div id="modal-overlay" class="hidden">
             <div id="modal-content">
-                <h2>Select Trump Suit</h2>
+                <h2>Choose Trump Suit</h2>
+                <p>Examine your first 4 cards and select the trump suit for this round:</p>
+                <div id="initial-hand-preview" class="hand"></div>
                 <div id="trump-options">
-                    <button class="suit-btn" data-suit="Hearts">Hearts ♥</button>
-                    <button class="suit-btn" data-suit="Diamonds">Diamonds ♦</button>
-                    <button class="suit-btn" data-suit="Clubs">Clubs ♣</button>
-                    <button class="suit-btn" data-suit="Spades">Spades ♠</button>
+                    <button class="suit-btn red-suit" data-suit="Hearts">
+                        <span class="suit-symbol">♥</span> Hearts
+                    </button>
+                    <button class="suit-btn red-suit" data-suit="Diamonds">
+                        <span class="suit-symbol">♦</span> Diamonds
+                    </button>
+                    <button class="suit-btn black-suit" data-suit="Clubs">
+                        <span class="suit-symbol">♣</span> Clubs
+                    </button>
+                    <button class="suit-btn black-suit" data-suit="Spades">
+                        <span class="suit-symbol">♠</span> Spades
+                    </button>
                 </div>
             </div>
         </div>
