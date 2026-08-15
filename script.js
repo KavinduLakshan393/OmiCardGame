@@ -267,7 +267,22 @@ function resolveTrick() {
 
 function processNextTurn() {
     if (game.players[0].hand.length === 0 && game.currentTrick.length === 0) {
-        return; // Round over handled later
+        const nsTricks = game.teams[0].tricksWon;
+        const ewTricks = game.teams[1].tricksWon;
+        
+        let msg = `Round Over! NS: ${nsTricks}, EW: ${ewTricks}\n`;
+        const callerTeam = game.teams.find(t => t.players.some(p => p.id === game.trumpCaller));
+        
+        if (callerTeam.tricksWon >= 5) {
+            msg += `${callerTeam.name} won the round!`;
+        } else {
+            msg += `${callerTeam.name} failed to get 5 tricks. Opponents win!`;
+        }
+        
+        alert(msg);
+        document.getElementById('start-game-btn').style.display = 'block';
+        document.getElementById('start-game-btn').textContent = 'Next Round';
+        return;
     }
     
     if (game.players[game.turnIndex].isAI) {
