@@ -159,4 +159,29 @@ document.getElementById('start-game-btn').addEventListener('click', () => {
     game.dealInitialCards();
     updateUI();
     document.getElementById('start-game-btn').style.display = 'none';
+    
+    game.trumpCaller = 1; // Left player is first caller
+    
+    if (game.players[game.trumpCaller].isAI) {
+        setTimeout(() => {
+            const suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+            setTrump(suits[Math.floor(Math.random() * suits.length)]);
+        }, 1000);
+    } else {
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
 });
+
+document.querySelectorAll('.suit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const suit = e.target.dataset.suit;
+        document.getElementById('modal-overlay').classList.add('hidden');
+        setTrump(suit);
+    });
+});
+
+function setTrump(suit) {
+    game.trumpSuit = suit;
+    game.dealRemainingCards();
+    updateUI();
+}
