@@ -74,14 +74,14 @@ body {
 
 #status-banner {
     background: rgba(255, 255, 255, 0.15);
-    padding: 6px 20px;
+    padding: 6px 24px;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 #status-message {
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: #fbc531;
 }
 
@@ -99,8 +99,8 @@ body {
     align-items: center;
     gap: 8px;
     margin: 4px 0;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 14px;
     border-radius: 12px;
     z-index: 10;
 }
@@ -130,8 +130,8 @@ body {
 }
 
 .player-area.active-turn .player-info {
-    box-shadow: 0 0 15px #fbc531;
-    border: 1px solid #fbc531;
+    box-shadow: 0 0 18px #fbc531;
+    border: 1.5px solid #fbc531;
 }
 
 /* Middle Row */
@@ -157,7 +157,7 @@ body {
 }
 
 #p0-hand {
-    height: 155px;
+    height: 160px;
     padding-bottom: 10px;
     align-items: flex-end;
 }
@@ -168,6 +168,18 @@ body {
 
 .vertical-hand {
     flex-direction: column;
+}
+
+/* Card Wrapper - Prevents hover jitter */
+.card-wrapper {
+    position: relative;
+    width: 90px;
+    height: 160px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transform-origin: bottom center;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.25);
 }
 
 /* Authentic Playing Card Design */
@@ -186,15 +198,14 @@ body {
     padding: 6px 8px;
     transform-origin: bottom center;
     border: 1px solid #dcdde1;
-    cursor: default;
+    cursor: pointer;
 }
 
-/* Fanned Hover effect for Player 0 (Human) */
-#p0-hand .card:hover {
-    transform: rotate(0deg) translateY(-40px) scale(1.2) !important;
+/* Smooth Jitter-Free Hover Effect */
+.card-wrapper:hover .card {
+    transform: rotate(0deg) translateY(-35px) scale(1.18) !important;
     z-index: 300 !important;
     box-shadow: 0 20px 35px rgba(0, 0, 0, 0.75);
-    cursor: pointer;
 }
 
 .card.red { color: #d63031; }
@@ -304,6 +315,17 @@ body {
     grid-template-rows: repeat(4, 1fr);
 }
 
+/* Invalid Play Shake Animation */
+.card.shake {
+    animation: shakeAnim 0.4s ease-in-out;
+}
+
+@keyframes shakeAnim {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
 /* Face Down Cards */
 .card.hidden-card {
     background: linear-gradient(135deg, #1e3799 0%, #0c2461 100%);
@@ -312,6 +334,7 @@ body {
     justify-content: center;
     align-items: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    cursor: default;
 }
 
 .card.hidden-card::after {
@@ -358,6 +381,7 @@ body {
     transform: scale(0.9) !important;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.25);
+    cursor: default;
 }
 
 @keyframes popIn {

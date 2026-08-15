@@ -152,7 +152,7 @@ function getCardCenterHTML(rank, suit) {
     return `<div class="card-center pips-grid pips-${count}">${pips}</div>`;
 }
 
-// UI Rendering - Full Cards & Fanned Layouts
+// UI Rendering - Full Cards & Fanned Wrappers
 function renderCard(card, hidden = false) {
     const div = document.createElement('div');
     div.className = 'card';
@@ -190,38 +190,51 @@ function renderHand(playerId, cards, hidden = false) {
     const total = cards.length;
     
     cards.forEach((card, index) => {
+        const cardWrapper = document.createElement('div');
+        cardWrapper.className = 'card-wrapper';
+        
         const cardEl = renderCard(card, hidden);
+        cardWrapper.appendChild(cardEl);
         
         if (playerId === 0) {
-            // Human player (South): Fan out cards in an arc
+            // Human player (South): Stable fanned layout using wrappers to avoid hover jitter
             const mid = (total - 1) / 2;
             const angle = (index - mid) * 5;
             const yArc = Math.pow(index - mid, 2) * 2.5;
             
-            cardEl.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
-            cardEl.style.zIndex = index + 1;
+            cardWrapper.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
+            cardWrapper.style.zIndex = index + 1;
             if (index > 0) {
-                cardEl.style.marginLeft = '-42px'; // Overlap so top-left indexes are clear
+                cardWrapper.style.marginLeft = '-42px';
             }
             
             if (!hidden) {
-                cardEl.addEventListener('click', () => {
-                    if (game.turnIndex === 0 && !game.isProcessing) {
-                        playCard(0, index);
+                cardWrapper.addEventListener('click', () => {
+                    if (game.turnIndex !== 0) {
+                        const activeName = game.players[game.turnIndex].name;
+                        updateStatus(`It's not your turn! Waiting for ${activeName}.`);
+                        return;
+                    }
+                    if (game.isProcessing) return;
+                    
+                    const success = playCard(0, index);
+                    if (!success) {
+                        cardEl.classList.add('shake');
+                        setTimeout(() => cardEl.classList.remove('shake'), 500);
                     }
                 });
             }
         } else if (playerId === 2) {
             // Partner (North): Horizontal fan
-            if (index > 0) cardEl.style.marginLeft = '-45px';
-            cardEl.style.zIndex = index + 1;
+            if (index > 0) cardWrapper.style.marginLeft = '-45px';
+            cardWrapper.style.zIndex = index + 1;
         } else {
             // Side players (West & East): Vertical fan
-            if (index > 0) cardEl.style.marginTop = '-70px';
-            cardEl.style.zIndex = index + 1;
+            if (index > 0) cardWrapper.style.marginTop = '-70px';
+            cardWrapper.style.zIndex = index + 1;
         }
         
-        container.appendChild(cardEl);
+        container.appendChild(cardWrapper);
     });
 }
 
@@ -272,7 +285,7 @@ function updateUI() {
             if (player.id === game.turnIndex) {
                 pArea.classList.add('active-turn');
                 badge.classList.remove('hidden');
-                badge.textContent = player.isAI ? 'Thinking...' : 'Your Turn!';
+                badge.textContent = player.isAI ? 'Thinking...' : 'YOUR TURN!';
             } else {
                 pArea.classList.remove('active-turn');
                 badge.classList.add('hidden');
@@ -318,7 +331,7 @@ function startRound() {
                 }
             });
             setTrump(bestSuit);
-        }, 1200);
+        }, 1000);
     }
 }
 
@@ -329,14 +342,20 @@ function showTrumpModal() {
     const total = cards.length;
     
     cards.forEach((card, index) => {
+        const cardWrapper = document.createElement('div');
+        cardWrapper.className = 'card-wrapper';
+        
         const cardEl = renderCard(card, false);
+        cardWrapper.appendChild(cardEl);
+        
         const mid = (total - 1) / 2;
         const angle = (index - mid) * 6;
         const yArc = Math.pow(index - mid, 2) * 2;
-        cardEl.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
-        cardEl.style.zIndex = index + 1;
-        if (index > 0) cardEl.style.marginLeft = '-35px';
-        previewContainer.appendChild(cardEl);
+        cardWrapper.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
+        cardWrapper.style.zIndex = index + 1;
+        if (index > 0) cardWrapper.style.marginLeft = '-35px';
+        
+        previewContainer.appendChild(cardWrapper);
     });
     document.getElementById('modal-overlay').classList.remove('hidden');
 }
@@ -366,12 +385,12 @@ function processTurn() {
     const activePlayer = game.players[game.turnIndex];
     
     if (activePlayer.id === 0) {
-        updateStatus("Your turn! Click a card to play.");
+        updateStatus("YOUR TURN! Click a card to play.");
     } else {
         updateStatus(`Waiting for ${activePlayer.name}...`);
         setTimeout(() => {
             playAITurn(activePlayer.id);
-        }, 900);
+        }, 750);
     }
 }
 
@@ -387,7 +406,7 @@ function playCard(playerIndex, cardIndex) {
             const hasLedSuit = player.hand.some(c => c.suit === ledSuit);
             if (hasLedSuit) {
                 if (playerIndex === 0) {
-                    updateStatus(`You must follow suit (${ledSuit})!`);
+                    updateStatus(`Must follow suit (${ledSuit})!`);
                 }
                 return false;
             }
@@ -400,7 +419,7 @@ function playCard(playerIndex, cardIndex) {
     
     if (game.currentTrick.length === 4) {
         game.isProcessing = true;
-        setTimeout(resolveTrick, 1200);
+        setTimeout(resolveTrick, 1000);
     } else {
         game.turnIndex = (game.turnIndex + 1) % 4;
         processTurn();
@@ -468,9 +487,9 @@ function resolveTrick() {
     updateUI();
     
     if (game.players[0].hand.length === 0) {
-        setTimeout(resolveRound, 1000);
+        setTimeout(resolveRound, 800);
     } else {
-        setTimeout(processTurn, 800);
+        setTimeout(processTurn, 700);
     }
 }
 
