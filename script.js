@@ -140,8 +140,15 @@ function renderHand(playerId, cards, hidden = false) {
     if (!container) return;
     
     container.innerHTML = '';
-    cards.forEach(card => {
+    cards.forEach((card, index) => {
         const cardEl = renderCard(card, hidden);
+        if (playerId === 0) {
+            cardEl.addEventListener('click', () => {
+                if (game.turnIndex === 0) {
+                    playCard(0, index);
+                }
+            });
+        }
         container.appendChild(cardEl);
     });
 }
@@ -152,6 +159,17 @@ function updateUI() {
     });
     const indicator = document.getElementById('trump-suit');
     indicator.textContent = game.trumpSuit ? game.trumpSuit : '-';
+    
+    const trickPositions = {0: 'bottom', 1: 'left', 2: 'top', 3: 'right'};
+    Object.values(trickPositions).forEach(pos => {
+        document.getElementById(`trick-${pos}`).innerHTML = '';
+    });
+    
+    game.currentTrick.forEach(play => {
+        const pos = trickPositions[play.player];
+        const slot = document.getElementById(`trick-${pos}`);
+        slot.appendChild(renderCard(play.card, false));
+    });
 }
 
 document.getElementById('start-game-btn').addEventListener('click', () => {
@@ -184,4 +202,92 @@ function setTrump(suit) {
     game.trumpSuit = suit;
     game.dealRemainingCards();
     updateUI();
+    processNextTurn(); // Start the game loop
+}
+
+function getRankValue(rank) {
+    return RANKS.indexOf(rank);
+}
+
+function playCard(playerIndex, cardIndex) {
+    const player = game.players[playerIndex];
+    const card = player.hand[cardIndex];
+    
+    if (game.currentTrick.length > 0) {
+        const ledSuit = game.currentTrick[0].card.suit;
+        if (card.suit !== ledSuit) {
+            const hasLedSuit = player.hand.some(c => c.suit === ledSuit);
+            if (hasLedSuit) {
+                if (playerIndex === 0) alert("You must follow suit!");
+                return false;
+            }
+        }
+    }
+    
+    player.hand.splice(cardIndex, 1);
+    game.currentTrick.push({ player: playerIndex, card: card });
+    updateUI();
+    
+    if (game.currentTrick.length === 4) {
+        setTimeout(resolveTrick, 1500);
+    } else {
+        game.turnIndex = (game.turnIndex + 1) % 4;
+        processNextTurn();
+    }
+    return true;
+}
+
+function resolveTrick() {
+    const ledSuit = game.currentTrick[0].card.suit;
+    let highestValue = -1;
+    let winnerIndex = -1;
+    
+    for (let play of game.currentTrick) {
+        let value = -1;
+        if (play.card.suit === game.trumpSuit) {
+            value = getRankValue(play.card.rank) + 100;
+        } else if (play.card.suit === ledSuit) {
+            value = getRankValue(play.card.rank);
+        }
+        
+        if (value > highestValue) {
+            highestValue = value;
+            winnerIndex = play.player;
+        }
+    }
+    
+    const winningTeam = game.teams.find(t => t.players.some(p => p.id === winnerIndex));
+    winningTeam.tricksWon++;
+    
+    game.currentTrick = [];
+    game.turnIndex = winnerIndex;
+    updateUI();
+    processNextTurn();
+}
+
+function processNextTurn() {
+    if (game.players[0].hand.length === 0 && game.currentTrick.length === 0) {
+        return; // Round over handled later
+    }
+    
+    if (game.players[game.turnIndex].isAI) {
+        setTimeout(() => {
+            const player = game.players[game.turnIndex];
+            let validIndices = [];
+            
+            if (game.currentTrick.length > 0) {
+                const ledSuit = game.currentTrick[0].card.suit;
+                for (let i = 0; i < player.hand.length; i++) {
+                    if (player.hand[i].suit === ledSuit) validIndices.push(i);
+                }
+            }
+            
+            if (validIndices.length === 0) {
+                for (let i = 0; i < player.hand.length; i++) validIndices.push(i);
+            }
+            
+            const randomValidIndex = validIndices[Math.floor(Math.random() * validIndices.length)];
+            playCard(game.turnIndex, randomValidIndex);
+        }, 800);
+    }
 }
