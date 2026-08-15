@@ -25,8 +25,8 @@ body {
     width: 95vw;
     height: 95vh;
     max-width: 1280px;
-    max-height: 850px;
-    background: radial-gradient(ellipse at center, rgba(38, 87, 62, 0.7) 0%, rgba(15, 41, 28, 0.9) 100%);
+    max-height: 880px;
+    background: radial-gradient(ellipse at center, rgba(38, 87, 62, 0.75) 0%, rgba(15, 41, 28, 0.95) 100%);
     backdrop-filter: blur(12px);
     border-radius: 28px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 2px rgba(255, 255, 255, 0.2);
@@ -46,7 +46,7 @@ body {
     align-items: center;
     width: 100%;
     background: rgba(0, 0, 0, 0.35);
-    padding: 10px 20px;
+    padding: 8px 20px;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -74,13 +74,13 @@ body {
 
 #status-banner {
     background: rgba(255, 255, 255, 0.15);
-    padding: 8px 24px;
+    padding: 6px 20px;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 #status-message {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #fbc531;
 }
@@ -102,6 +102,7 @@ body {
     background: rgba(0, 0, 0, 0.4);
     padding: 4px 12px;
     border-radius: 12px;
+    z-index: 10;
 }
 
 .player-name {
@@ -144,100 +145,180 @@ body {
 }
 
 .side-player {
-    width: 140px;
+    width: 150px;
 }
 
-/* Hands & Card Overlaps */
+/* Hands & Card Layouts */
 .hand {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 110px;
+    position: relative;
 }
 
-.horizontal-hand .card {
-    margin-left: -35px;
+#p0-hand {
+    height: 155px;
+    padding-bottom: 10px;
+    align-items: flex-end;
 }
 
-.horizontal-hand .card:first-child {
-    margin-left: 0;
+.horizontal-hand {
+    flex-direction: row;
 }
 
 .vertical-hand {
     flex-direction: column;
 }
 
-.vertical-hand .card {
-    margin-top: -75px;
-}
-
-.vertical-hand .card:first-child {
-    margin-top: 0;
-}
-
-/* Playing Cards */
+/* Authentic Playing Card Design */
 .card {
-    width: 75px;
-    height: 108px;
+    width: 90px;
+    height: 135px;
     background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
     position: relative;
     user-select: none;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.25), box-shadow 0.25s ease;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 6px;
-    border: 1px solid #e0e0e0;
+    padding: 6px 8px;
+    transform-origin: bottom center;
+    border: 1px solid #dcdde1;
+    cursor: default;
 }
 
-.horizontal-hand #p0-hand .card:hover {
-    transform: translateY(-20px) scale(1.08);
-    z-index: 50 !important;
+/* Fanned Hover effect for Player 0 (Human) */
+#p0-hand .card:hover {
+    transform: rotate(0deg) translateY(-40px) scale(1.2) !important;
+    z-index: 300 !important;
+    box-shadow: 0 20px 35px rgba(0, 0, 0, 0.75);
     cursor: pointer;
-    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.5);
 }
 
-.card.red {
-    color: #e84118;
-}
+.card.red { color: #d63031; }
+.card.black { color: #2d3436; }
 
-.card.black {
-    color: #2f3640;
-}
-
+/* Top Left & Bottom Right Corners */
 .card-corner {
     display: flex;
     flex-direction: column;
     align-items: center;
-    line-height: 1;
+    line-height: 0.9;
     font-weight: 800;
-    font-size: 0.95rem;
+    z-index: 2;
 }
 
-.card-center-suit {
-    font-size: 1.8rem;
-    align-self: center;
+.card-corner.top-left {
+    align-self: flex-start;
 }
 
-.card-bottom {
+.card-corner.bottom-right {
+    align-self: flex-end;
     transform: rotate(180deg);
 }
 
-.card.hidden-card {
-    background: linear-gradient(135deg, #273c75 0%, #192a56 100%);
-    border: 2px solid #44bd32;
+.card-corner .rank {
+    font-size: 1.15rem;
+    letter-spacing: -0.5px;
+}
+
+.card-corner .suit {
+    font-size: 0.95rem;
+    margin-top: 1px;
+}
+
+/* Center Artwork & Pips */
+.card-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 52px;
+    height: 75px;
     display: flex;
     justify-content: center;
     align-items: center;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.ace-center {
+    font-size: 3rem;
+    line-height: 1;
+}
+
+.court-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.court-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.court-suit {
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+/* Pips Grids for Ranks 7, 8, 9, 10 */
+.pips-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 4px;
+    justify-items: center;
+    align-items: center;
+    padding: 4px;
+    font-size: 0.95rem;
+}
+
+.pips-7 {
+    grid-template-rows: repeat(3, 1fr);
+}
+.pips-7 .pip:nth-child(7) {
+    grid-column: 1 / span 2;
+}
+
+.pips-8 {
+    grid-template-rows: repeat(4, 1fr);
+}
+
+.pips-9 {
+    grid-template-rows: repeat(4, 1fr);
+}
+.pips-9 .pip:nth-child(9) {
+    grid-column: 1 / span 2;
+}
+
+.pips-10 {
+    grid-template-rows: repeat(4, 1fr);
+}
+
+/* Face Down Cards */
+.card.hidden-card {
+    background: linear-gradient(135deg, #1e3799 0%, #0c2461 100%);
+    border: 2px solid #fbc531;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
 .card.hidden-card::after {
-    content: "♠♥\A ♣♦";
+    content: "♠ ♥\A ♣ ♦";
     white-space: pre;
-    color: rgba(255, 255, 255, 0.15);
-    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 1.2rem;
     text-align: center;
     font-weight: 800;
 }
@@ -263,23 +344,25 @@ body {
 
 .trick-slot {
     position: absolute;
-    width: 75px;
-    height: 108px;
+    width: 90px;
+    height: 135px;
 }
 
-#trick-top { top: 20px; }
-#trick-bottom { bottom: 20px; }
-#trick-left { left: 25px; }
-#trick-right { right: 25px; }
+#trick-top { top: 15px; }
+#trick-bottom { bottom: 15px; }
+#trick-left { left: 20px; }
+#trick-right { right: 20px; }
 
 .trick-slot .card {
     margin: 0 !important;
-    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: scale(0.9) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.25);
 }
 
 @keyframes popIn {
     0% { transform: scale(0.5); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 1; }
 }
 
 #trump-display {
@@ -287,7 +370,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.65);
     padding: 6px 16px;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -349,7 +432,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 200;
+    z-index: 400;
 }
 
 #modal-overlay.hidden {
@@ -364,7 +447,7 @@ body {
     text-align: center;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    max-width: 500px;
+    max-width: 540px;
 }
 
 #modal-content h2 {
@@ -379,15 +462,8 @@ body {
 }
 
 #initial-hand-preview {
+    height: 150px;
     margin-bottom: 20px;
-}
-
-#initial-hand-preview .card {
-    margin-left: -15px;
-}
-
-#initial-hand-preview .card:first-child {
-    margin-left: 0;
 }
 
 #trump-options {

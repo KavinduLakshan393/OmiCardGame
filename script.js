@@ -128,7 +128,31 @@ function getRankValue(rank) {
     return RANKS.indexOf(rank);
 }
 
-// UI Rendering
+// Generate Center Artwork/Pips for Full Cards
+function getCardCenterHTML(rank, suit) {
+    const symbol = getSuitSymbol(suit);
+    if (rank === 'A') {
+        return `<div class="card-center ace-center">${symbol}</div>`;
+    }
+    if (rank === 'K') {
+        return `<div class="card-center court-center"><span class="court-icon">♔</span><span class="court-suit">${symbol}</span></div>`;
+    }
+    if (rank === 'Q') {
+        return `<div class="card-center court-center"><span class="court-icon">♕</span><span class="court-suit">${symbol}</span></div>`;
+    }
+    if (rank === 'J') {
+        return `<div class="card-center court-center"><span class="court-icon">♘</span><span class="court-suit">${symbol}</span></div>`;
+    }
+    
+    const count = parseInt(rank, 10);
+    let pips = '';
+    for (let i = 0; i < count; i++) {
+        pips += `<span class="pip">${symbol}</span>`;
+    }
+    return `<div class="card-center pips-grid pips-${count}">${pips}</div>`;
+}
+
+// UI Rendering - Full Cards & Fanned Layouts
 function renderCard(card, hidden = false) {
     const div = document.createElement('div');
     div.className = 'card';
@@ -141,15 +165,17 @@ function renderCard(card, hidden = false) {
     div.classList.add(isRed ? 'red' : 'black');
     
     const symbol = getSuitSymbol(card.suit);
+    const centerHTML = getCardCenterHTML(card.rank, card.suit);
+    
     div.innerHTML = `
-        <div class="card-corner">
-            <span>${card.rank}</span>
-            <span>${symbol}</span>
+        <div class="card-corner top-left">
+            <span class="rank">${card.rank}</span>
+            <span class="suit">${symbol}</span>
         </div>
-        <div class="card-center-suit">${symbol}</div>
-        <div class="card-corner card-bottom">
-            <span>${card.rank}</span>
-            <span>${symbol}</span>
+        ${centerHTML}
+        <div class="card-corner bottom-right">
+            <span class="rank">${card.rank}</span>
+            <span class="suit">${symbol}</span>
         </div>
     `;
     return div;
@@ -161,15 +187,40 @@ function renderHand(playerId, cards, hidden = false) {
     if (!container) return;
     
     container.innerHTML = '';
+    const total = cards.length;
+    
     cards.forEach((card, index) => {
         const cardEl = renderCard(card, hidden);
-        if (playerId === 0 && !hidden) {
-            cardEl.addEventListener('click', () => {
-                if (game.turnIndex === 0 && !game.isProcessing) {
-                    playCard(0, index);
-                }
-            });
+        
+        if (playerId === 0) {
+            // Human player (South): Fan out cards in an arc
+            const mid = (total - 1) / 2;
+            const angle = (index - mid) * 5;
+            const yArc = Math.pow(index - mid, 2) * 2.5;
+            
+            cardEl.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
+            cardEl.style.zIndex = index + 1;
+            if (index > 0) {
+                cardEl.style.marginLeft = '-42px'; // Overlap so top-left indexes are clear
+            }
+            
+            if (!hidden) {
+                cardEl.addEventListener('click', () => {
+                    if (game.turnIndex === 0 && !game.isProcessing) {
+                        playCard(0, index);
+                    }
+                });
+            }
+        } else if (playerId === 2) {
+            // Partner (North): Horizontal fan
+            if (index > 0) cardEl.style.marginLeft = '-45px';
+            cardEl.style.zIndex = index + 1;
+        } else {
+            // Side players (West & East): Vertical fan
+            if (index > 0) cardEl.style.marginTop = '-70px';
+            cardEl.style.zIndex = index + 1;
         }
+        
         container.appendChild(cardEl);
     });
 }
@@ -250,13 +301,10 @@ function startRound() {
     updateStatus(`${callerName} is selecting Trump...`);
     
     if (game.trumpCaller === 0) {
-        // Human player selects trump
         showTrumpModal();
     } else {
-        // AI selects trump after brief delay
         setTimeout(() => {
             const aiHand = game.players[game.trumpCaller].hand;
-            // Pick suit with maximum cards or highest rank
             const suitCounts = {};
             SUITS.forEach(s => suitCounts[s] = 0);
             aiHand.forEach(c => suitCounts[c.suit]++);
@@ -277,8 +325,18 @@ function startRound() {
 function showTrumpModal() {
     const previewContainer = document.getElementById('initial-hand-preview');
     previewContainer.innerHTML = '';
-    game.players[0].hand.forEach(card => {
-        previewContainer.appendChild(renderCard(card, false));
+    const cards = game.players[0].hand;
+    const total = cards.length;
+    
+    cards.forEach((card, index) => {
+        const cardEl = renderCard(card, false);
+        const mid = (total - 1) / 2;
+        const angle = (index - mid) * 6;
+        const yArc = Math.pow(index - mid, 2) * 2;
+        cardEl.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
+        cardEl.style.zIndex = index + 1;
+        if (index > 0) cardEl.style.marginLeft = '-35px';
+        previewContainer.appendChild(cardEl);
     });
     document.getElementById('modal-overlay').classList.remove('hidden');
 }
@@ -323,7 +381,6 @@ function playCard(playerIndex, cardIndex) {
     const player = game.players[playerIndex];
     const card = player.hand[cardIndex];
     
-    // Follow suit rule
     if (game.currentTrick.length > 0) {
         const ledSuit = game.currentTrick[0].card.suit;
         if (card.suit !== ledSuit) {
@@ -368,15 +425,11 @@ function playAITurn(aiIndex) {
         for (let i = 0; i < player.hand.length; i++) validIndices.push(i);
     }
     
-    // Smart card selection for AI
     let chosenIndex = validIndices[0];
     if (game.currentTrick.length > 0) {
-        const ledSuit = game.currentTrick[0].card.suit;
-        // Try to play highest card if following suit, or lowest if can't win
         validIndices.sort((a, b) => getRankValue(player.hand[b].rank) - getRankValue(player.hand[a].rank));
         chosenIndex = validIndices[0];
     } else {
-        // AI leading: choose highest card
         validIndices.sort((a, b) => getRankValue(player.hand[b].rank) - getRankValue(player.hand[a].rank));
         chosenIndex = validIndices[0];
     }
@@ -414,7 +467,6 @@ function resolveTrick() {
     game.isProcessing = false;
     updateUI();
     
-    // Check if round is over (8 tricks played)
     if (game.players[0].hand.length === 0) {
         setTimeout(resolveRound, 1000);
     } else {
@@ -446,7 +498,6 @@ function resolveRound() {
     
     updateStatus(resultMsg);
     
-    // Rotate dealer for next round
     game.dealerIndex = (game.dealerIndex + 1) % 4;
     
     const startBtn = document.getElementById('start-game-btn');
