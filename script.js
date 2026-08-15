@@ -105,3 +105,58 @@ class Game {
 }
 
 const game = new Game();
+
+// UI Logic
+function getSuitSymbol(suit) {
+    switch (suit) {
+        case 'Hearts': return '♥';
+        case 'Diamonds': return '♦';
+        case 'Clubs': return '♣';
+        case 'Spades': return '♠';
+    }
+}
+
+function renderCard(card, hidden = false) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    if (hidden) {
+        div.classList.add('hidden-card');
+        return div;
+    }
+    
+    if (card.suit === 'Hearts' || card.suit === 'Diamonds') {
+        div.classList.add('red');
+    } else {
+        div.classList.add('black');
+    }
+    
+    div.innerHTML = `<span>${card.rank}</span><span>${getSuitSymbol(card.suit)}</span>`;
+    return div;
+}
+
+function renderHand(playerId, cards, hidden = false) {
+    const containerId = `p${playerId}-hand`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    cards.forEach(card => {
+        const cardEl = renderCard(card, hidden);
+        container.appendChild(cardEl);
+    });
+}
+
+function updateUI() {
+    game.players.forEach(player => {
+        renderHand(player.id, player.hand, player.isAI);
+    });
+    const indicator = document.getElementById('trump-suit');
+    indicator.textContent = game.trumpSuit ? game.trumpSuit : '-';
+}
+
+document.getElementById('start-game-btn').addEventListener('click', () => {
+    game.initRound();
+    game.dealInitialCards();
+    updateUI();
+    document.getElementById('start-game-btn').style.display = 'none';
+});
