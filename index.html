@@ -7,8 +7,51 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
-        <h1>Omi Card Game</h1>
+    <div id="game-board">
+        <div id="top-player" class="player-area">
+            <h3 class="player-name">Player 3 (Partner)</h3>
+            <div id="p2-hand" class="hand"></div>
+        </div>
+        
+        <div class="middle-row">
+            <div id="left-player" class="player-area side-player">
+                <h3 class="player-name">Player 2 (Left)</h3>
+                <div id="p1-hand" class="hand"></div>
+            </div>
+            
+            <div id="trick-area">
+                <div class="trick-slot" id="trick-top"></div>
+                <div class="trick-slot" id="trick-left"></div>
+                <div class="trick-slot" id="trick-right"></div>
+                <div class="trick-slot" id="trick-bottom"></div>
+                <div id="trump-indicator">Trump: <span id="trump-suit">-</span></div>
+            </div>
+
+            <div id="right-player" class="player-area side-player">
+                <h3 class="player-name">Player 4 (Right)</h3>
+                <div id="p3-hand" class="hand"></div>
+            </div>
+        </div>
+        
+        <div id="bottom-player" class="player-area">
+            <h3 class="player-name">You</h3>
+            <div id="p0-hand" class="hand"></div>
+            <div id="action-area">
+                <button id="start-game-btn" class="btn">Start Game</button>
+            </div>
+        </div>
+        
+        <div id="modal-overlay" class="hidden">
+            <div id="modal-content">
+                <h2>Select Trump Suit</h2>
+                <div id="trump-options">
+                    <button class="suit-btn" data-suit="Hearts">Hearts ♥</button>
+                    <button class="suit-btn" data-suit="Diamonds">Diamonds ♦</button>
+                    <button class="suit-btn" data-suit="Clubs">Clubs ♣</button>
+                    <button class="suit-btn" data-suit="Spades">Spades ♠</button>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
