@@ -4,107 +4,432 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omi Card Game</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            background: #0a1a0f;
+            color: #fff;
+        }
+
+        /* ===== GAME BOARD - Full Viewport Grid ===== */
+        #game-board {
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            grid-template-columns: 140px 1fr 140px;
+            grid-template-areas:
+                "header  header  header"
+                "west    center  east"
+                "footer  footer  footer";
+            background: radial-gradient(ellipse at center, #1e5e3a 0%, #0d2918 100%);
+        }
+
+        /* ===== HEADER / SCOREBOARD ===== */
+        #header-area {
+            grid-area: header;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 20px;
+            background: rgba(0,0,0,0.45);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            z-index: 10;
+        }
+        .score-box { text-align: center; }
+        .score-label { font-size: 0.75rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.5px; display: block; }
+        .score-value { font-size: 1.05rem; font-weight: 800; color: #4cd137; }
+        #status-banner {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 6px 20px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fbc531;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        /* ===== CENTER AREA (north + middle + south) ===== */
+        #center-area {
+            grid-area: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            overflow: hidden;
+        }
+
+        /* ===== PLAYER NORTH ===== */
+        #player-north {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ===== TRICK TABLE ===== */
+        #trick-table {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .trick-table-bg {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.3);
+            border: 2px dashed rgba(255,255,255,0.15);
+        }
+        .trick-slot {
+            position: absolute;
+            width: 72px;
+            height: 108px;
+        }
+        #trick-north { top: 10px; left: 50%; transform: translateX(-50%); }
+        #trick-south { bottom: 10px; left: 50%; transform: translateX(-50%); }
+        #trick-west  { left: 10px; top: 50%; transform: translateY(-50%); }
+        #trick-east  { right: 10px; top: 50%; transform: translateY(-50%); }
+        #trump-badge {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0,0,0,0.75);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 4px 12px;
+            z-index: 5;
+        }
+        #trump-badge .t-label { font-size: 0.6rem; font-weight: 800; letter-spacing: 1px; color: #fbc531; }
+        #trump-badge .t-suit  { font-size: 1.5rem; line-height: 1.1; }
+        #trump-badge .t-caller { font-size: 0.65rem; color: #ccc; }
+
+        /* ===== PLAYER SOUTH (YOU) ===== */
+        #player-south {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ===== WEST / EAST SIDE COLUMNS ===== */
+        #west-area {
+            grid-area: west;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px 4px;
+        }
+        #east-area {
+            grid-area: east;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px 4px;
+        }
+
+        /* ===== FOOTER (action bar) ===== */
+        #footer-area {
+            grid-area: footer;
+            display: flex;
+            justify-content: center;
+            padding: 6px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        /* ===== PLAYER LABEL ===== */
+        .player-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            padding: 3px 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .turn-badge {
+            background: #fbc531;
+            color: #000;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 1px 7px;
+            border-radius: 8px;
+            animation: pulseBadge 1s ease-in-out infinite alternate;
+        }
+        .turn-badge.hidden { display: none; }
+        @keyframes pulseBadge {
+            from { opacity: 0.8; transform: scale(0.97); }
+            to   { opacity: 1; transform: scale(1.05); }
+        }
+        .player-area.active-turn .player-label {
+            border: 1.5px solid #fbc531;
+            box-shadow: 0 0 12px #fbc531aa;
+        }
+
+        /* ===== HANDS ===== */
+        .hand-h { display: flex; flex-direction: row; align-items: flex-end; justify-content: center; }
+        .hand-v { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* ===== CARD WRAPPER (provides stable hover area) ===== */
+        .card-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(.175,.885,.32,1.3);
+        }
+        /* Fan rotation is on the WRAPPER. Hover lifts wrapper, card stays inside */
+        .hand-h .card-wrapper:hover {
+            z-index: 200 !important;
+            transform: rotate(0deg) translateY(-30px) scale(1.15) !important;
+        }
+
+        /* ===== CARD ITSELF ===== */
+        .card {
+            width: 72px;
+            height: 108px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px 6px;
+            position: relative;
+            user-select: none;
+        }
+        .card.red  { color: #d00; }
+        .card.black { color: #111; }
+        .card-tl { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+        .card-br { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; transform: rotate(180deg); }
+        .card-tl .cr, .card-br .cr { font-size: 1rem; font-weight: 900; }
+        .card-tl .cs, .card-br .cs { font-size: 0.85rem; font-weight: 700; margin-top: 1px; }
+        .card-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            pointer-events: none;
+        }
+        /* Court cards special center */
+        .card-center.court {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 1.6rem; line-height: 1;
+        }
+        .card-center.court .court-sub { font-size: 0.85rem; margin-top: 2px; }
+        /* Face-down card */
+        .card.face-down {
+            background: linear-gradient(135deg, #1a2e82 0%, #0b1a4f 100%);
+            border: 2px solid #f0c040;
+            cursor: default;
+        }
+        .card.face-down::after {
+            content: '♠♥\A♣♦';
+            white-space: pre;
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.18);
+            font-size: 1rem; text-align: center;
+        }
+
+        /* Played card in trick area */
+        .trick-slot .card {
+            width: 72px; height: 108px;
+            animation: cardPop 0.25s cubic-bezier(.175,.885,.32,1.3);
+            cursor: default;
+        }
+        @keyframes cardPop {
+            from { opacity:0; transform: scale(0.6); }
+            to   { opacity:1; transform: scale(1); }
+        }
+
+        /* Invalid play shake */
+        .card.shake {
+            animation: shakeCard 0.35s ease;
+        }
+        @keyframes shakeCard {
+            0%,100%{ transform: translateX(0); }
+            25%     { transform: translateX(-8px); }
+            75%     { transform: translateX(8px); }
+        }
+
+        /* ===== BUTTON ===== */
+        .btn {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 0.95rem;
+            padding: 9px 22px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f9ca24 0%, #44bd32 100%);
+            color: #000;
+            box-shadow: 0 4px 14px rgba(68,189,50,0.45);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(68,189,50,0.55); }
+
+        /* ===== MODAL ===== */
+        #modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 500;
+        }
+        #modal-overlay.hidden { display: none; }
+        #modal-box {
+            background: #1a252f;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 28px 32px;
+            max-width: 480px; width: 90%;
+            text-align: center;
+        }
+        #modal-box h2 { color: #fbc531; margin-bottom: 6px; font-size: 1.4rem; }
+        #modal-box p  { color: #bbb; font-size: 0.9rem; margin-bottom: 14px; }
+        #hand-preview { display: flex; justify-content: center; align-items: flex-end; min-height: 120px; margin-bottom: 16px; }
+        #trump-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .suit-btn {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem; font-weight: 700;
+            padding: 12px 8px;
+            border-radius: 10px; border: 2px solid transparent;
+            background: #2c3e50; color: #fff;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: all .2s;
+        }
+        .suit-btn:hover { background: #3d5166; border-color: #fbc531; transform: translateY(-2px); }
+        .suit-btn.red-s .ss { color: #e84118; }
+        .suit-btn.blk-s .ss { color: #ecf0f1; }
+    </style>
 </head>
 <body>
-    <div id="game-board">
-        <!-- Header Info & Scoreboard -->
-        <header id="game-header">
-            <div id="scoreboard">
-                <div class="score-box">
-                    <span class="score-label">NS (You & Partner)</span>
-                    <span class="score-value"><span id="ns-tricks">0</span> Tricks | <span id="ns-tokens">0</span> Tokens</span>
-                </div>
-                <div id="status-banner">
-                    <span id="status-message">Click "Start Game" to begin!</span>
-                </div>
-                <div class="score-box">
-                    <span class="score-label">EW (Opponents)</span>
-                    <span class="score-value"><span id="ew-tricks">0</span> Tricks | <span id="ew-tokens">0</span> Tokens</span>
-                </div>
-            </div>
-        </header>
+<div id="game-board">
 
-        <!-- Top Player (Partner - Player 2) -->
-        <div id="player-2" class="player-area top-player">
-            <div class="player-info">
-                <span class="player-name">Partner (North)</span>
-                <span class="turn-badge hidden">Thinking...</span>
-            </div>
-            <div id="p2-hand" class="hand horizontal-hand"></div>
+    <!-- HEADER -->
+    <div id="header-area">
+        <div class="score-box">
+            <span class="score-label">NS (You &amp; Partner)</span>
+            <span class="score-value">
+                <span id="ns-tricks">0</span> Tricks |
+                <span id="ns-tokens">0</span> Tokens
+            </span>
         </div>
-        
-        <!-- Middle Row: Left Player, Center Trick Table, Right Player -->
-        <div class="middle-row">
-            <!-- Left Player (Opponent 1 - Player 1) -->
-            <div id="player-1" class="player-area side-player left-player">
-                <div class="player-info">
-                    <span class="player-name">West</span>
-                    <span class="turn-badge hidden">Thinking...</span>
-                </div>
-                <div id="p1-hand" class="hand vertical-hand"></div>
-            </div>
-            
-            <!-- Center Trick Table -->
-            <div id="trick-area">
-                <div class="trick-table-bg"></div>
-                <div class="trick-slot" id="trick-top"></div>
-                <div class="trick-slot" id="trick-left"></div>
-                <div class="trick-slot" id="trick-right"></div>
-                <div class="trick-slot" id="trick-bottom"></div>
-                
-                <div id="trump-display">
-                    <span class="trump-title">TRUMP</span>
-                    <span id="trump-suit-icon">-</span>
-                    <span id="trump-caller-name"></span>
-                </div>
-            </div>
+        <div id="status-banner">Click "Start Game" to begin!</div>
+        <div class="score-box">
+            <span class="score-label">EW (Opponents)</span>
+            <span class="score-value">
+                <span id="ew-tricks">0</span> Tricks |
+                <span id="ew-tokens">0</span> Tokens
+            </span>
+        </div>
+    </div>
 
-            <!-- Right Player (Opponent 2 - Player 3) -->
-            <div id="player-3" class="player-area side-player right-player">
-                <div class="player-info">
-                    <span class="player-name">East</span>
-                    <span class="turn-badge hidden">Thinking...</span>
+    <!-- WEST COLUMN -->
+    <div id="west-area">
+        <div id="player-1" class="player-area">
+            <div class="player-label">
+                West
+                <span class="turn-badge hidden">...</span>
+            </div>
+            <div id="p1-hand" class="hand-v"></div>
+        </div>
+    </div>
+
+    <!-- CENTER COLUMN -->
+    <div id="center-area">
+        <!-- North -->
+        <div id="player-north">
+            <div id="player-2" class="player-area">
+                <div class="player-label">
+                    Partner (North)
+                    <span class="turn-badge hidden">...</span>
                 </div>
-                <div id="p3-hand" class="hand vertical-hand"></div>
+            </div>
+            <div id="p2-hand" class="hand-h"></div>
+        </div>
+
+        <!-- Trick Table -->
+        <div id="trick-table">
+            <div class="trick-table-bg"></div>
+            <div class="trick-slot" id="trick-north"></div>
+            <div class="trick-slot" id="trick-south"></div>
+            <div class="trick-slot" id="trick-west"></div>
+            <div class="trick-slot" id="trick-east"></div>
+            <div id="trump-badge">
+                <span class="t-label">TRUMP</span>
+                <span class="t-suit" id="trump-icon">–</span>
+                <span class="t-caller" id="trump-caller"></span>
             </div>
         </div>
-        
-        <!-- Bottom Player (You - Player 0) -->
-        <div id="player-0" class="player-area bottom-player">
-            <div id="action-bar">
-                <button id="start-game-btn" class="btn primary-btn">Start Game</button>
-            </div>
-            <div id="p0-hand" class="hand horizontal-hand"></div>
-            <div class="player-info">
-                <span class="player-name">You (South)</span>
-                <span class="turn-badge hidden">Your Turn!</span>
-            </div>
-        </div>
-        
-        <!-- Trump Selection Modal -->
-        <div id="modal-overlay" class="hidden">
-            <div id="modal-content">
-                <h2>Choose Trump Suit</h2>
-                <p>Examine your first 4 cards and select the trump suit for this round:</p>
-                <div id="initial-hand-preview" class="hand"></div>
-                <div id="trump-options">
-                    <button class="suit-btn red-suit" data-suit="Hearts">
-                        <span class="suit-symbol">♥</span> Hearts
-                    </button>
-                    <button class="suit-btn red-suit" data-suit="Diamonds">
-                        <span class="suit-symbol">♦</span> Diamonds
-                    </button>
-                    <button class="suit-btn black-suit" data-suit="Clubs">
-                        <span class="suit-symbol">♣</span> Clubs
-                    </button>
-                    <button class="suit-btn black-suit" data-suit="Spades">
-                        <span class="suit-symbol">♠</span> Spades
-                    </button>
+
+        <!-- South (You) -->
+        <div id="player-south">
+            <div id="p0-hand" class="hand-h"></div>
+            <div id="player-0" class="player-area">
+                <div class="player-label">
+                    You (South)
+                    <span class="turn-badge hidden">Your Turn!</span>
                 </div>
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
+
+    <!-- EAST COLUMN -->
+    <div id="east-area">
+        <div id="player-3" class="player-area">
+            <div class="player-label">
+                East
+                <span class="turn-badge hidden">...</span>
+            </div>
+            <div id="p3-hand" class="hand-v"></div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div id="footer-area">
+        <button id="start-btn" class="btn btn-primary">Start Game</button>
+    </div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" class="hidden">
+    <div id="modal-box">
+        <h2>Choose Trump Suit</h2>
+        <p>Your first 4 cards – pick a trump suit:</p>
+        <div id="hand-preview"></div>
+        <div id="trump-opts">
+            <button class="suit-btn red-s" data-suit="Hearts"><span class="ss">♥</span> Hearts</button>
+            <button class="suit-btn red-s" data-suit="Diamonds"><span class="ss">♦</span> Diamonds</button>
+            <button class="suit-btn blk-s" data-suit="Clubs"><span class="ss">♣</span> Clubs</button>
+            <button class="suit-btn blk-s" data-suit="Spades"><span class="ss">♠</span> Spades</button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
