@@ -86,6 +86,22 @@ class Game {
         this.trumpSuit = null;
         this.currentTrick = [];
     }
+
+    dealInitialCards() {
+        for (let i = 0; i < 4; i++) {
+            for (let player of this.players) {
+                player.addCards([this.deck.cards.pop()]);
+            }
+        }
+    }
+
+    dealRemainingCards() {
+        for (let i = 0; i < 4; i++) {
+            for (let player of this.players) {
+                player.addCards([this.deck.cards.pop()]);
+            }
+        }
+    }
 }
 
 const game = new Game();
