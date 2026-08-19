@@ -2,11 +2,11 @@
 
 The Welcome page is owned and maintained separately by the user.
 
-Batch 1 does **not** redesign, replace, or generate the Welcome page.
+Batch 3 does **not** redesign, replace, or recreate the approved Welcome-page logo or its cinematic logo-building animation.
 
 ## Target route
 
-Once the Main Menu patch is implemented, the intended application flow is:
+The application routing contract is now:
 
 ```text
 welcome.html
@@ -16,12 +16,23 @@ main-menu.html
 game.html
 ```
 
-## Current Batch 1 limitation
+## Current repository fallback
 
-The attached codebase currently contains only `index.html`, which remains the playable prototype entry point during Batch 1.
+The repository does not contain the user's final Welcome page asset. Therefore `index.html` is a deliberately neutral compatibility redirect to `main-menu.html`.
 
-Renaming or splitting this page is intentionally deferred until the Main Menu integration patch so Batch 1 does not introduce unrelated routing/UI regressions.
+When the user adds the final Welcome page, it can either:
 
-## Required compatibility
+1. be saved as `welcome.html` and linked from the hosting entry point; or
+2. replace the neutral `index.html` redirect.
 
-The separately maintained Welcome page should eventually navigate only to `main-menu.html` and must not contain Omi game-rule logic.
+In both cases, **Tap to Start must navigate to `main-menu.html`**.
+
+## Logo integrity
+
+The approved primary Omi logo must not be recreated, approximated, or geometrically modified by application code. The Batch 3 Main Menu uses only a typographic `Omi` wordmark and normal card-suit symbols because the approved logo asset is not present in the attached codebase.
+
+When the official logo asset is added later, it should be referenced directly as an image/SVG asset and remain unchanged.
+
+## Separation of responsibilities
+
+The Welcome page must contain no Omi game-rule logic. Main Menu navigation, Tutorial navigation, and gameplay remain separate application concerns.

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn standard Omi step by step before starting a single-player match.">
+    <title>Omi — Tutorial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/tokens.css">
+    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/typography.css">
+    <link rel="stylesheet" href="styles/tutorial.css">
+</head>
+<body class="tutorial-page">
+    <main class="tutorial-shell">
+        <header class="tutorial-header">
+            <a class="tutorial-brand" href="main-menu.html">Omi</a>
+            <div class="tutorial-progress-text" id="tutorial-progress" aria-live="polite">Step 1 of 11</div>
+            <a class="tutorial-exit" href="main-menu.html">Exit</a>
+        </header>
+
+        <section class="tutorial-main">
+            <div class="tutorial-layout">
+                <article class="tutorial-copy" id="tutorial-copy">
+                    <div class="tutorial-kicker" id="tutorial-kicker"></div>
+                    <h1 class="tutorial-step-title" id="tutorial-title"></h1>
+                    <p class="tutorial-body-copy" id="tutorial-body"></p>
+                    <ul class="tutorial-rules" id="tutorial-rules"></ul>
+                </article>
+
+                <div class="tutorial-visual" id="tutorial-visual" aria-live="polite">
+                    <div class="visual-stage" id="visual-stage"></div>
+                    <div class="visual-caption" id="visual-caption"></div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="tutorial-footer">
+            <div class="tutorial-shortcut">← / → Navigate · Esc Exit</div>
+            <div class="tutorial-dots" id="tutorial-dots" aria-hidden="true"></div>
+            <div class="tutorial-nav">
+                <button class="tutorial-button" id="tutorial-back" type="button">Back</button>
+                <button class="tutorial-button primary" id="tutorial-next" type="button">Next</button>
+            </div>
+        </footer>
+    </main>
+
+    <script type="module" src="src/ui/tutorial.js"></script>
+</body>
+</html>

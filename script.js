@@ -23,10 +23,19 @@ import { SinglePlayerController } from './src/controllers/SinglePlayerController
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+/* Batch 3 menu preferences are passed as query parameters by main-menu.html.
+ * The dedicated settings subsystem in Patch 12 will replace this lightweight
+ * bootstrap bridge without changing the controller API. */
+const gameParams = new URLSearchParams(window.location.search);
+const initialDifficulty = gameParams.get('difficulty') === 'casual'
+    ? AI_DIFFICULTY.CASUAL
+    : AI_DIFFICULTY.SMART;
+const initiallyMuted = gameParams.get('sound') === 'off';
+
 const controller = new SinglePlayerController({
     engine: new GameEngine(),
     humanPlayerId: 0,
-    difficulty: AI_DIFFICULTY.SMART,
+    difficulty: initialDifficulty,
     hooks: {
         onEvents: handleEngineEvents,
         afterDealBatch: handleDealBatchAnimation,
@@ -48,7 +57,7 @@ const state = controller.state;
 const runtime = {
     processing: false,
     dealing: false,
-    muted: false,
+    muted: initiallyMuted,
     stats: {
         tricksWonByPlayer: [0, 0, 0, 0],
         roundsWon: [0, 0],
@@ -725,6 +734,10 @@ function showStatsPanel() {
 
     document.getElementById('stats-modal').classList.remove('hidden');
 }
+
+/* Reflect menu-selected sound preference before the first interaction. */
+const initialMuteButton = document.getElementById('mute-btn');
+if (initialMuteButton) initialMuteButton.textContent = runtime.muted ? '🔇' : '🔊';
 
 /* ===== EVENT LISTENERS ===== */
 

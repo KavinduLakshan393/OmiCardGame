@@ -1,0 +1,3884 @@
+diff --git a/README.md b/README.md
+index 4e4a3a4..8491af8 100644
+--- a/README.md
++++ b/README.md
+@@ -1,85 +1,107 @@
+-# Omi Card Game
+-
+-A browser-based implementation of the Sri Lankan partnership trick-taking card game Omi.
+-
+-## Batch 2 status
+-
+-The current branch now contains the single-player architecture defined by implementation-plan Patches 3, 4, and 5 on top of the Batch 1 standard-rules engine.
+-
+-Implemented foundations:
+-
+-- explicit engine actions and serializable domain events;
+-- stable `cardId`-based play commands suitable for future networking;
+-- detached engine state snapshots for controller/AI consumers;
+-- dedicated DOM-independent `SinglePlayerController`;
+-- controller-owned human/AI turn sequencing and animation-completion hooks;
+-- extracted Casual and Smart AI strategies;
+-- fair AI knowledge views that expose no hidden teammate/opponent hands;
+-- public card tracking, partner awareness, and known-void-suit inference;
+-- the existing prototype UI now talks to the controller instead of directly running AI/game-flow transitions.
+-
+-Standard Omi foundations from Batch 1 remain unchanged:
+-
+-- 32-card deck: 7 through Ace in all four suits;
+-- counter-clockwise deal and play;
+-- dealer-right compulsory trump selection after the first four cards;
+-- second four-card batch after trump;
+-- standard follow-suit and trick rules;
+-- 10-token match target;
+-- caller 5–7 tricks: 1 token;
+-- defenders 5–7 tricks: 2 tokens;
+-- Kapothi: 3 tokens;
+-- 4-4: no immediate award, with carry to the next decisive hand.
+-
+-Joker and pass-trump remain intentionally excluded from Standard Mode.
+-
+-## Project structure
+-
+-```text
+-index.html                       Current prototype UI / game entry
+-script.js                        Presentation, audio, DOM rendering, animation hooks
+-src/engine/                      Authoritative Omi rules, actions, events and state
+-src/controllers/                 Single-player orchestration
+-src/ai/                          Fair-information AI strategies and knowledge model
+-scripts/check.mjs                Cross-platform project syntax check
+-tests/                           Node built-in automated tests
+-docs/                            Batch/audit documentation
+-style.css                        Reserved for later CSS extraction
+-```
+-
+-## Requirements
+-
+-- Modern browser with ES module support
+-- Node.js 20+ for tests
+-
+-## Run locally
+-
+-Serve the directory over HTTP instead of opening `index.html` with `file://`.
+-
+-```bash
+-python -m http.server 8000
+-```
+-
+-Open:
+-
+-```text
+-http://localhost:8000/
+-```
+-
+-## Run tests
+-
+-No npm dependencies are required.
+-
+-```bash
+-npm test
+-```
+-
+-Run syntax checks across `script.js` and all `src/**/*.js` files:
+-
+-```bash
+-npm run check
+-```
+-
+-## Welcome / Main Menu
+-
+-The basic Welcome page is maintained separately by the user. Main Menu integration remains scheduled for Patch 6, followed by the complete Tutorial in Patch 7. See `docs/welcome-routing-contract.md`.
++# Omi Card Game
++
++A browser-based implementation of the Sri Lankan partnership trick-taking card game Omi.
++
++## Batch 3 status
++
++The current branch now contains implementation-plan Patches 0–8.
++
++### Product/navigation foundation
++
++- neutral repository entry (`index.html`) routes to the Main Menu until the user-owned Welcome page is added;
++- `main-menu.html` provides Play Solo, Tutorial and Settings;
++- `game.html` is the existing playable single-player table;
++- `tutorial.html` provides the complete 11-step Standard Omi tutorial;
++- Tutorial completion is recorded locally and surfaced in the Main Menu;
++- Main Menu Casual/Smart difficulty and initial sound selections are passed into a solo match.
++
++### Design foundation
++
++- shared design tokens, spacing, motion and colour variables;
++- Cormorant Garamond for menu/tutorial display typography;
++- Manrope for application UI;
++- Barlow Condensed for gameplay display labels/scores;
++- Georgia for card typography;
++- legacy game CSS extracted from HTML into a dedicated stylesheet;
++- reduced-motion browser preference respected globally.
++
++### Single-player architecture from Batches 1–2
++
++- explicit engine actions and serializable domain events;
++- stable `cardId`-based play commands;
++- detached engine state snapshots;
++- DOM-independent `SinglePlayerController`;
++- controller-owned human/AI sequencing;
++- Casual and Smart fair-information AI;
++- public card tracking, partner awareness and known-void inference;
++- 32-card Standard Omi rules with compulsory trump, 4–4 carry and 10-token target.
++
++Joker and pass-trump remain intentionally excluded from Standard Mode.
++
++## Application routes
++
++```text
++user-owned welcome.html
++        ↓
++main-menu.html
++   ├── tutorial.html
++   └── game.html
++```
++
++The final Welcome page is maintained separately by the user. See `docs/welcome-routing-contract.md`.
++
++## Project structure
++
++```text
++index.html                       Neutral fallback entry → Main Menu
++main-menu.html                   Main navigation hub
++tutorial.html                    11-step Standard Omi tutorial
++game.html                        Current playable single-player game
++script.js                        Legacy gameplay presentation/audio hooks
++style.css                        Gameplay stylesheet entry point
++styles/                          Shared tokens, typography, menu/tutorial/game CSS
++src/engine/                      Authoritative Omi rules/actions/events/state
++src/controllers/                 Single-player orchestration
++src/ai/                          Fair-information AI strategies
++src/ui/                          Main Menu and Tutorial UI modules
++scripts/check.mjs                Cross-platform JS syntax check
++tests/                           Node built-in automated tests
++docs/                            Batch/audit documentation
++```
++
++## Requirements
++
++- Modern browser with ES module support
++- Node.js 20+ for tests
++
++## Run locally
++
++Serve the project over HTTP:
++
++```bash
++python -m http.server 8000
++```
++
++Open:
++
++```text
++http://localhost:8000/
++```
++
++The fallback entry redirects to the Main Menu.
++
++## Run tests
++
++```bash
++npm test
++```
++
++Run syntax checks:
++
++```bash
++npm run check
++```
++
++## Current development boundary
++
++Batch 3 intentionally stops before the responsive game-table rebuild. Patch 9 is the next implementation step, followed by the production card component and gameplay animation system.
+diff --git a/docs/batch-3-notes.md b/docs/batch-3-notes.md
+new file mode 100644
+index 0000000..859f49c
+--- /dev/null
++++ b/docs/batch-3-notes.md
+@@ -0,0 +1,76 @@
++# Batch 3 Notes — Patches 6, 7 and 8
++
++Batch 3 implements the first production-facing navigation and visual foundation on top of the Batch 2 engine/controller/AI architecture.
++
++## Patch 6 — Main Menu Integration
++
++Added:
++
++- `main-menu.html` as the official post-Welcome navigation hub;
++- Play Solo → `game.html`;
++- Tutorial → `tutorial.html`;
++- functional Main Menu settings for Casual/Smart AI and initial sound state;
++- keyboard/focus-safe settings dialog;
++- Tutorial completion indicator;
++- a neutral `index.html` redirect while the user-owned Welcome page remains external;
++- renamed the playable prototype entry from `index.html` to `game.html`.
++
++The approved primary Omi logo was **not** recreated because its source asset is not present in the attached repository. Main Menu uses typography and standard suit symbols only.
++
++## Patch 7 — Complete Tutorial
++
++Added an 11-step tutorial covering:
++
++1. players and partnerships;
++2. the 32-card deck;
++3. card ranking;
++4. first-four deal and compulsory trump;
++5. leading and counter-clockwise play;
++6. following suit;
++7. trump behaviour;
++8. trick resolution;
++9. hand scoring;
++10. 4–4 carry and 10-token match target;
++11. beginner strategy.
++
++Tutorial features:
++
++- Back / Next / Finish;
++- Left / Right keyboard navigation;
++- Escape to Main Menu;
++- step progress indicator;
++- responsive visual rule examples;
++- `omiTutorialCompleted = true` stored after Finish.
++
++## Patch 8 — Global Design System and Typography
++
++Added:
++
++- `styles/tokens.css`;
++- `styles/base.css`;
++- `styles/typography.css`;
++- `styles/menu.css`;
++- `styles/tutorial.css`;
++- `styles/game-legacy.css`.
++
++Typography roles:
++
++- Cormorant Garamond — Welcome/Main Menu/Tutorial editorial display;
++- Manrope — application UI;
++- Barlow Condensed — scores and gameplay display labels;
++- Georgia — playing-card typography.
++
++Gameplay palette tokens are defined now but the full table redesign remains intentionally deferred to Patch 9.
++
++The old embedded CSS was extracted from the game document into `styles/game-legacy.css`, so presentation is no longer embedded directly in `game.html`.
++
++## Deliberately deferred
++
++Batch 3 does not implement:
++
++- the final user-owned Welcome screen;
++- the approved primary-logo asset;
++- responsive gameplay-table redesign (Patch 9);
++- new playing-card component (Patch 10);
++- gameplay animation architecture (Patch 11);
++- full settings/audio persistence architecture (Patch 12).
+diff --git a/docs/welcome-routing-contract.md b/docs/welcome-routing-contract.md
+index 39993bb..8330ace 100644
+--- a/docs/welcome-routing-contract.md
++++ b/docs/welcome-routing-contract.md
+@@ -1,27 +1,38 @@
+-# Welcome Page Integration Contract
+-
+-The Welcome page is owned and maintained separately by the user.
+-
+-Batch 1 does **not** redesign, replace, or generate the Welcome page.
+-
+-## Target route
+-
+-Once the Main Menu patch is implemented, the intended application flow is:
+-
+-```text
+-welcome.html
+-    ↓ Tap to Start
+-main-menu.html
+-    ↓ Play Solo
+-game.html
+-```
+-
+-## Current Batch 1 limitation
+-
+-The attached codebase currently contains only `index.html`, which remains the playable prototype entry point during Batch 1.
+-
+-Renaming or splitting this page is intentionally deferred until the Main Menu integration patch so Batch 1 does not introduce unrelated routing/UI regressions.
+-
+-## Required compatibility
+-
+-The separately maintained Welcome page should eventually navigate only to `main-menu.html` and must not contain Omi game-rule logic.
++# Welcome Page Integration Contract
++
++The Welcome page is owned and maintained separately by the user.
++
++Batch 3 does **not** redesign, replace, or recreate the approved Welcome-page logo or its cinematic logo-building animation.
++
++## Target route
++
++The application routing contract is now:
++
++```text
++welcome.html
++    ↓ Tap to Start
++main-menu.html
++    ↓ Play Solo
++game.html
++```
++
++## Current repository fallback
++
++The repository does not contain the user's final Welcome page asset. Therefore `index.html` is a deliberately neutral compatibility redirect to `main-menu.html`.
++
++When the user adds the final Welcome page, it can either:
++
++1. be saved as `welcome.html` and linked from the hosting entry point; or
++2. replace the neutral `index.html` redirect.
++
++In both cases, **Tap to Start must navigate to `main-menu.html`**.
++
++## Logo integrity
++
++The approved primary Omi logo must not be recreated, approximated, or geometrically modified by application code. The Batch 3 Main Menu uses only a typographic `Omi` wordmark and normal card-suit symbols because the approved logo asset is not present in the attached codebase.
++
++When the official logo asset is added later, it should be referenced directly as an image/SVG asset and remain unchanged.
++
++## Separation of responsibilities
++
++The Welcome page must contain no Omi game-rule logic. Main Menu navigation, Tutorial navigation, and gameplay remain separate application concerns.
+diff --git a/game.html b/game.html
+new file mode 100644
+index 0000000..6bd16d4
+--- /dev/null
++++ b/game.html
+@@ -0,0 +1,238 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <title>Omi — Play Solo</title>
++    <meta name="description" content="Play the classic Sri Lankan partnership card game Omi against fair AI opponents.">
++    <link rel="preconnect" href="https://fonts.googleapis.com">
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
++    <link rel="stylesheet" href="style.css">
++
++</head>
++<body>
++
++<!-- ====================================================== -->
++<!--  MAIN GAME BOARD                                        -->
++<!-- ====================================================== -->
++<div id="game-board">
++
++    <!-- HEADER -->
++    <div id="header-area">
++        <div class="score-box">
++            <span class="score-label">NS (You &amp; Partner)</span>
++            <span class="score-value">
++                <span id="ns-tricks">0</span> Tricks |
++                <span id="ns-tokens">0</span> Tokens (Target 10)
++            </span>
++        </div>
++
++        <div id="status-banner">Click "Start Game" to begin!</div>
++
++        <div class="score-box">
++            <span class="score-label">EW (Opponents)</span>
++            <span class="score-value">
++                <span id="ew-tricks">0</span> Tricks |
++                <span id="ew-tokens">0</span> Tokens (Target 10)
++            </span>
++        </div>
++
++        <div class="header-controls">
++            <button class="icon-btn" id="mute-btn" title="Toggle sound">🔊</button>
++            <button class="icon-btn" id="log-toggle-btn" title="Toggle game log">📋</button>
++        </div>
++    </div>
++
++    <!-- WEST COLUMN -->
++    <div id="west-area">
++        <div id="player-1" class="player-area">
++            <div class="player-label">
++                West
++                <span class="turn-badge hidden">...</span>
++            </div>
++            <div id="p1-hand" class="hand-v"></div>
++        </div>
++    </div>
++
++    <!-- CENTER COLUMN -->
++    <div id="center-area">
++
++        <!-- North -->
++        <div id="player-north">
++            <div id="player-2" class="player-area">
++                <div class="player-label">
++                    Partner (North)
++                    <span class="turn-badge hidden">...</span>
++                </div>
++            </div>
++            <div id="p2-hand" class="hand-h"></div>
++        </div>
++
++        <!-- Trick Table + History -->
++        <div id="center-middle">
++            <div id="trick-table">
++                <div class="trick-table-bg"></div>
++
++                <!-- Deck pile (visible during dealing) -->
++                <div id="deck-pile">
++                    <div class="deck-card" style="transform:rotate(-3deg) translate(-2px,2px)"></div>
++                    <div class="deck-card" style="transform:rotate(1deg)"></div>
++                    <div class="deck-card"></div>
++                </div>
++
++                <!-- Card slots -->
++                <div class="trick-slot" id="trick-north"></div>
++                <div class="trick-slot" id="trick-south"></div>
++                <div class="trick-slot" id="trick-west"></div>
++                <div class="trick-slot" id="trick-east"></div>
++
++                <!-- Trump badge -->
++                <div id="trump-badge">
++                    <span class="t-label">TRUMP</span>
++                    <span class="t-suit" id="trump-icon">–</span>
++                    <span class="t-caller" id="trump-caller"></span>
++                </div>
++            </div>
++
++            <!-- Trick history strip -->
++            <div id="trick-history-panel">
++                <span class="history-empty">No tricks yet</span>
++            </div>
++        </div>
++
++        <!-- South (You) -->
++        <div id="player-south">
++            <div id="p0-hand" class="hand-h"></div>
++            <div id="player-0" class="player-area">
++                <div class="player-label">
++                    You (South)
++                    <span class="turn-badge hidden">Your Turn!</span>
++                </div>
++            </div>
++        </div>
++
++    </div>
++
++    <!-- EAST COLUMN -->
++    <div id="east-area">
++        <div id="player-3" class="player-area">
++            <div class="player-label">
++                East
++                <span class="turn-badge hidden">...</span>
++            </div>
++            <div id="p3-hand" class="hand-v"></div>
++        </div>
++    </div>
++
++    <!-- FOOTER -->
++    <div id="footer-area">
++        <button id="start-btn" class="btn btn-primary">Start Game</button>
++        <button id="sort-btn" class="btn btn-secondary" style="display:none">♠♥♦♣ Sort</button>
++        <button id="show-stats-btn" class="btn btn-secondary" style="display:none">📊 Stats</button>
++    </div>
++
++</div><!-- /#game-board -->
++
++<!-- ====================================================== -->
++<!--  LOG SIDEBAR (outside grid, fixed right)               -->
++<!-- ====================================================== -->
++<div id="log-sidebar" class="collapsed">
++    <div id="log-sidebar-header">
++        📋 GAME LOG
++        <button id="log-close-btn" title="Close log">✕</button>
++    </div>
++    <ul id="game-log-list"></ul>
++</div>
++
++<!-- ====================================================== -->
++<!--  TRICK WIN FLOATING BANNER                             -->
++<!-- ====================================================== -->
++<div id="trick-win-overlay" class="hidden"></div>
++
++<!-- ====================================================== -->
++<!--  ROUND RESULT OVERLAY                                  -->
++<!-- ====================================================== -->
++<div id="round-overlay" class="hidden">
++    <div id="round-overlay-box">
++        <div id="round-overlay-msg"></div>
++    </div>
++</div>
++
++<!-- ====================================================== -->
++<!--  MATCH WIN OVERLAY                                     -->
++<!-- ====================================================== -->
++<div id="match-win-overlay" class="hidden">
++    <div id="match-win-box">
++        <div id="match-winner-text"></div>
++        <div id="match-stats-text"></div>
++        <div class="match-win-actions">
++            <button id="match-play-again-btn" class="btn btn-primary">Play Again</button>
++            <button id="show-stats-btn-match" class="btn btn-secondary">📊 View Stats</button>
++        </div>
++    </div>
++</div>
++
++<!-- ====================================================== -->
++<!--  TRUMP SELECTION MODAL                                 -->
++<!-- ====================================================== -->
++<div id="modal-overlay" class="hidden">
++    <div id="modal-box">
++        <h2>Choose Trump Suit</h2>
++        <p>Your first 4 cards — choose the trump suit:</p>
++        <div id="hand-preview"></div>
++        <div id="trump-opts">
++            <button class="suit-btn red-s" data-suit="Hearts"><span class="ss">♥</span> Hearts</button>
++            <button class="suit-btn red-s" data-suit="Diamonds"><span class="ss">♦</span> Diamonds</button>
++            <button class="suit-btn blk-s" data-suit="Clubs"><span class="ss">♣</span> Clubs</button>
++            <button class="suit-btn blk-s" data-suit="Spades"><span class="ss">♠</span> Spades</button>
++        </div>
++    </div>
++</div>
++
++<!-- ====================================================== -->
++<!--  STATS MODAL                                           -->
++<!-- ====================================================== -->
++<div id="stats-modal" class="hidden">
++    <div id="stats-box">
++        <h2>📊 Game Statistics</h2>
++
++        <div class="stats-section">
++            <h3>Tricks Won</h3>
++            <table class="stats-table">
++                <tbody id="stats-tricks-body"></tbody>
++            </table>
++        </div>
++
++        <div class="stats-section">
++            <div class="team-stats-grid">
++                <div class="team-stat-box">
++                    <div class="team-name">NS — You &amp; Partner</div>
++                    <div class="team-stat-row">Rounds Won <span id="stats-ns-wins">0</span></div>
++                    <div class="team-stat-row">Kaputhis <span id="stats-ns-kaputhis">0</span></div>
++                    <div class="team-stat-row">Defends <span id="stats-ns-defends">0</span></div>
++                </div>
++                <div class="team-stat-box">
++                    <div class="team-name">EW — Opponents</div>
++                    <div class="team-stat-row">Rounds Won <span id="stats-ew-wins">0</span></div>
++                    <div class="team-stat-row">Kaputhis <span id="stats-ew-kaputhis">0</span></div>
++                    <div class="team-stat-row">Defends <span id="stats-ew-defends">0</span></div>
++                </div>
++            </div>
++        </div>
++
++        <div class="stats-section">
++            <h3>⭐ Most Valuable Player</h3>
++            <div class="mvp-box" id="stats-mvp">—</div>
++        </div>
++
++        <div class="stats-close-wrap">
++            <button id="stats-close-btn" class="btn btn-secondary">Close</button>
++        </div>
++    </div>
++</div>
++
++<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
++<script type="module" src="script.js"></script>
++</body>
++</html>
+diff --git a/index.html b/index.html
+index bedb61c..4c36af7 100644
+--- a/index.html
++++ b/index.html
+@@ -1,818 +1,13 @@
+-<!DOCTYPE html>
+-<html lang="en">
+-<head>
+-    <meta charset="UTF-8">
+-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-    <title>Omi Card Game</title>
+-    <meta name="description" content="Play the classic Sri Lankan trick-taking card game Omi online with smart AI opponents.">
+-    <link rel="preconnect" href="https://fonts.googleapis.com">
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+-    <style>
+-        /* ===== RESET ===== */
+-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+-        html, body {
+-            width: 100%; height: 100%;
+-            overflow: hidden;
+-            font-family: 'Outfit', sans-serif;
+-            background: #0a1a0f;
+-            color: #fff;
+-        }
+-
+-        /* ===== GAME BOARD — CSS Grid ===== */
+-        #game-board {
+-            width: 100vw;
+-            height: 100vh;
+-            display: grid;
+-            grid-template-rows: auto 1fr auto;
+-            grid-template-columns: 148px 1fr 148px;
+-            grid-template-areas:
+-                "header  header  header"
+-                "west    center  east"
+-                "footer  footer  footer";
+-            background: radial-gradient(ellipse at center, #1e5e3a 0%, #0d2918 100%);
+-        }
+-
+-        /* ===== HEADER ===== */
+-        #header-area {
+-            grid-area: header;
+-            display: flex;
+-            justify-content: space-between;
+-            align-items: center;
+-            padding: 7px 16px;
+-            gap: 8px;
+-            background: rgba(0,0,0,0.5);
+-            border-bottom: 1px solid rgba(255,255,255,0.1);
+-            z-index: 10;
+-        }
+-        .score-box { text-align: center; min-width: 130px; }
+-        .score-label { font-size: 0.7rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.6px; display: block; }
+-        .score-value { font-size: 1rem; font-weight: 800; color: #4cd137; }
+-        #status-banner {
+-            flex: 1;
+-            background: rgba(255,255,255,0.1);
+-            border: 1px solid rgba(255,255,255,0.18);
+-            border-radius: 20px;
+-            padding: 5px 18px;
+-            font-size: 0.95rem;
+-            font-weight: 800;
+-            color: #fbc531;
+-            text-align: center;
+-            white-space: nowrap;
+-            overflow: hidden;
+-            text-overflow: ellipsis;
+-        }
+-        .header-controls {
+-            display: flex;
+-            align-items: center;
+-            gap: 8px;
+-        }
+-        .icon-btn {
+-            background: rgba(255,255,255,0.12);
+-            border: 1px solid rgba(255,255,255,0.2);
+-            color: #fff;
+-            border-radius: 10px;
+-            width: 34px; height: 34px;
+-            font-size: 1.1rem;
+-            cursor: pointer;
+-            display: flex; align-items: center; justify-content: center;
+-            transition: background .2s, transform .15s;
+-        }
+-        .icon-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.08); }
+-
+-        /* ===== WEST / EAST SIDE COLUMNS ===== */
+-        #west-area {
+-            grid-area: west;
+-            display: flex; flex-direction: column;
+-            align-items: center; justify-content: center;
+-            padding: 8px 4px; overflow: hidden;
+-        }
+-        #east-area {
+-            grid-area: east;
+-            display: flex; flex-direction: column;
+-            align-items: center; justify-content: center;
+-            padding: 8px 4px; overflow: hidden;
+-        }
+-
+-        /* ===== CENTER COLUMN ===== */
+-        #center-area {
+-            grid-area: center;
+-            display: flex;
+-            flex-direction: column;
+-            align-items: center;
+-            justify-content: space-between;
+-            padding: 8px 0 6px;
+-            overflow: hidden;
+-            gap: 4px;
+-        }
+-
+-        /* ===== PLAYER NORTH / SOUTH WRAPPERS ===== */
+-        #player-north, #player-south {
+-            display: flex;
+-            flex-direction: column;
+-            align-items: center;
+-            gap: 4px;
+-        }
+-
+-        /* ===== CENTER MIDDLE: TRICK TABLE + HISTORY ===== */
+-        #center-middle {
+-            display: flex;
+-            flex-direction: column;
+-            align-items: center;
+-            gap: 6px;
+-            flex-shrink: 0;
+-        }
+-
+-        /* ===== TRICK TABLE ===== */
+-        #trick-table {
+-            position: relative;
+-            width: 260px;
+-            height: 240px;
+-            display: flex;
+-            align-items: center;
+-            justify-content: center;
+-            flex-shrink: 0;
+-        }
+-        .trick-table-bg {
+-            position: absolute;
+-            inset: 0;
+-            border-radius: 50%;
+-            background: rgba(0,0,0,0.28);
+-            border: 2px dashed rgba(255,255,255,0.13);
+-        }
+-        .trick-slot {
+-            position: absolute;
+-            width: 72px; height: 108px;
+-            display: flex; align-items: center; justify-content: center;
+-        }
+-        #trick-north { top: 8px; left: 50%; transform: translateX(-50%); }
+-        #trick-south { bottom: 8px; left: 50%; transform: translateX(-50%); }
+-        #trick-west  { left: 8px; top: 50%; transform: translateY(-50%); }
+-        #trick-east  { right: 8px; top: 50%; transform: translateY(-50%); }
+-
+-        .winner-flash {
+-            animation: winFlash 0.6s ease-out;
+-        }
+-        @keyframes winFlash {
+-            0%   { filter: drop-shadow(0 0 0px #fbc531); }
+-            40%  { filter: drop-shadow(0 0 18px #fbc531); }
+-            100% { filter: drop-shadow(0 0 0px #fbc531); }
+-        }
+-
+-        /* ===== DECK PILE ===== */
+-        #deck-pile {
+-            position: absolute;
+-            width: 72px; height: 108px;
+-            top: 50%; left: 50%;
+-            transform: translate(-50%, -50%);
+-            z-index: 6;
+-            display: none;
+-            align-items: center; justify-content: center;
+-        }
+-        .deck-card {
+-            position: absolute;
+-            width: 72px; height: 108px;
+-            background: linear-gradient(135deg, #1a2e82, #0b1a4f);
+-            border: 2px solid #f0c040;
+-            border-radius: 8px;
+-            box-shadow: 2px 4px 10px rgba(0,0,0,0.5);
+-        }
+-
+-        /* ===== TRUMP BADGE ===== */
+-        #trump-badge {
+-            position: absolute;
+-            display: flex; flex-direction: column; align-items: center;
+-            background: rgba(0,0,0,0.8);
+-            border: 1px solid rgba(255,255,255,0.2);
+-            border-radius: 12px;
+-            padding: 3px 10px;
+-            z-index: 5;
+-        }
+-        #trump-badge .t-label { font-size: 0.58rem; font-weight: 800; letter-spacing: 1px; color: #fbc531; }
+-        #trump-badge .t-suit  { font-size: 1.4rem; line-height: 1.1; }
+-        #trump-badge .t-caller { font-size: 0.62rem; color: #bbb; }
+-
+-        /* ===== TRICK HISTORY STRIP ===== */
+-        #trick-history-panel {
+-            display: flex;
+-            flex-direction: row;
+-            gap: 8px;
+-            align-items: flex-start;
+-            min-height: 52px;
+-            padding: 4px 6px;
+-            background: rgba(0,0,0,0.25);
+-            border-radius: 10px;
+-            max-width: 260px;
+-            overflow-x: auto;
+-        }
+-        .history-item { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+-        .history-label { font-size: 0.58rem; color: #aaa; white-space: nowrap; }
+-        .history-cards { display: flex; flex-direction: row; gap: 2px; }
+-        .mini-card {
+-            font-size: 0.65rem; font-weight: 800;
+-            background: #fff; color: #111;
+-            padding: 1px 3px;
+-            border-radius: 4px;
+-            border: 1px solid #ccc;
+-            white-space: nowrap;
+-        }
+-        .mini-card.red { color: #d00; }
+-        .history-empty { font-size: 0.7rem; color: #666; align-self: center; }
+-
+-        /* ===== PLAYER LABEL ===== */
+-        .player-area { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+-        .player-label {
+-            display: flex; align-items: center; gap: 6px;
+-            background: rgba(0,0,0,0.5);
+-            border: 1.5px solid transparent;
+-            border-radius: 10px;
+-            padding: 3px 10px;
+-            font-size: 0.8rem; font-weight: 700;
+-            transition: border-color .3s, box-shadow .3s;
+-        }
+-        .turn-badge {
+-            background: #fbc531; color: #000;
+-            font-size: 0.68rem; font-weight: 800;
+-            padding: 1px 7px; border-radius: 8px;
+-            animation: pulseBadge 0.9s ease-in-out infinite alternate;
+-        }
+-        .turn-badge.hidden { display: none; }
+-        @keyframes pulseBadge {
+-            from { opacity: 0.8; transform: scale(0.97); }
+-            to   { opacity: 1;   transform: scale(1.06); }
+-        }
+-        .player-area.active-turn .player-label {
+-            border-color: #fbc531;
+-            box-shadow: 0 0 14px #fbc531aa;
+-        }
+-
+-        /* ===== HANDS ===== */
+-        .hand-h {
+-            display: flex; flex-direction: row;
+-            align-items: flex-end; justify-content: center;
+-            padding: 0 8px;
+-        }
+-        .hand-v {
+-            display: flex; flex-direction: column;
+-            align-items: center; justify-content: center;
+-        }
+-
+-        /* ===== CARD WRAPPER ===== */
+-        .card-wrapper {
+-            position: relative;
+-            display: inline-block;
+-            cursor: pointer;
+-            transition: none;
+-        }
+-
+-        /* ===== CARD ===== */
+-        .card {
+-            width: 72px; height: 108px;
+-            background: #fff;
+-            border-radius: 8px;
+-            border: 1.5px solid #ccc;
+-            box-shadow: 2px 4px 12px rgba(0,0,0,0.38);
+-            display: flex; flex-direction: column;
+-            justify-content: space-between;
+-            padding: 5px 5px;
+-            position: relative;
+-            user-select: none;
+-            transition: box-shadow .2s, border-color .2s;
+-        }
+-        .card.red  { color: #d00; }
+-        .card.black { color: #111; }
+-
+-        /* Valid / Invalid card highlighting */
+-        .card.card-valid {
+-            border-color: #4cd137;
+-            box-shadow: 0 0 14px 3px rgba(76,209,55,0.6), 2px 4px 12px rgba(0,0,0,0.38);
+-        }
+-        .card.card-invalid {
+-            opacity: 0.38;
+-            filter: grayscale(55%);
+-            cursor: not-allowed;
+-        }
+-
+-        /* Shake animation for invalid plays */
+-        .card.shake {
+-            animation: shakeCard 0.35s ease;
+-        }
+-        @keyframes shakeCard {
+-            0%,100%{ transform: translateX(0); }
+-            25%    { transform: translateX(-7px); }
+-            75%    { transform: translateX(7px); }
+-        }
+-
+-        /* Card corners */
+-        .card-tl { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+-        .card-br { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; transform: rotate(180deg); }
+-        .card-tl .cr, .card-br .cr { font-size: 0.95rem; font-weight: 900; }
+-        .card-tl .cs, .card-br .cs { font-size: 0.8rem; font-weight: 700; margin-top: 1px; }
+-
+-        /* Card center */
+-        .card-center {
+-            position: absolute;
+-            top: 50%; left: 50%;
+-            transform: translate(-50%, -50%);
+-            pointer-events: none;
+-        }
+-        .card-center.ace-big { font-size: 2rem; }
+-        .card-center.pip-center { font-size: 1.5rem; }
+-        .card-center.court {
+-            display: flex; flex-direction: column; align-items: center;
+-        }
+-        .court-icon { font-size: 1.5rem; line-height: 1; }
+-        .court-sub  { font-size: 0.8rem; margin-top: 1px; }
+-
+-        /* Face-down card */
+-        .card.face-down {
+-            background: linear-gradient(135deg, #1a2e82 0%, #0b1a4f 100%);
+-            border: 2px solid #f0c040;
+-            cursor: default;
+-        }
+-        .card.face-down::after {
+-            content: '';
+-            position: absolute; inset: 5px;
+-            border: 1px solid rgba(240,192,64,0.35);
+-            border-radius: 4px;
+-            background: repeating-linear-gradient(
+-                45deg,
+-                transparent, transparent 6px,
+-                rgba(255,255,255,0.04) 6px, rgba(255,255,255,0.04) 7px
+-            );
+-        }
+-
+-        /* Trick slot played card */
+-        .trick-slot .card {
+-            width: 72px; height: 108px;
+-            animation: cardPop 0.22s cubic-bezier(.175,.885,.32,1.275);
+-            cursor: default;
+-        }
+-        @keyframes cardPop {
+-            from { opacity: 0; transform: scale(0.5) rotate(-5deg); }
+-            to   { opacity: 1; transform: scale(1) rotate(0deg); }
+-        }
+-
+-        /* ===== FOOTER ===== */
+-        #footer-area {
+-            grid-area: footer;
+-            display: flex;
+-            justify-content: center;
+-            align-items: center;
+-            gap: 10px;
+-            padding: 6px 16px;
+-            background: rgba(0,0,0,0.35);
+-        }
+-        .btn {
+-            font-family: 'Outfit', sans-serif;
+-            font-weight: 800; font-size: 0.9rem;
+-            padding: 8px 20px;
+-            border-radius: 20px; border: none;
+-            cursor: pointer;
+-            transition: transform .15s, box-shadow .15s, opacity .2s;
+-        }
+-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+-        .btn-primary {
+-            background: linear-gradient(135deg, #f9ca24 0%, #44bd32 100%);
+-            color: #000;
+-            box-shadow: 0 4px 14px rgba(68,189,50,0.4);
+-        }
+-        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(68,189,50,0.5); }
+-        .btn-secondary {
+-            background: rgba(255,255,255,0.12);
+-            color: #fff;
+-            border: 1px solid rgba(255,255,255,0.2);
+-        }
+-        .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
+-
+-        /* ===== TRICK WIN OVERLAY (floating banner) ===== */
+-        #trick-win-overlay {
+-            position: fixed;
+-            top: 50%; left: 50%;
+-            transform: translate(-50%, -50%) scale(0.8);
+-            background: rgba(0,0,0,0.85);
+-            border: 2px solid #fbc531;
+-            border-radius: 16px;
+-            padding: 12px 28px;
+-            font-size: 1.2rem; font-weight: 800; color: #fbc531;
+-            z-index: 600;
+-            pointer-events: none;
+-            opacity: 0;
+-            transition: opacity 0.3s, transform 0.3s;
+-            white-space: nowrap;
+-        }
+-        #trick-win-overlay.show {
+-            opacity: 1;
+-            transform: translate(-50%, -50%) scale(1);
+-        }
+-        #trick-win-overlay.hidden { display: none; }
+-
+-        /* ===== ROUND OVERLAY ===== */
+-        #round-overlay {
+-            position: fixed; inset: 0;
+-            background: rgba(0,0,0,0.6);
+-            backdrop-filter: blur(4px);
+-            display: flex; align-items: center; justify-content: center;
+-            z-index: 550;
+-            animation: fadeIn 0.3s ease;
+-        }
+-        #round-overlay.hidden { display: none; }
+-        #round-overlay-box {
+-            background: #1a252f;
+-            border: 1px solid rgba(255,255,255,0.15);
+-            border-radius: 20px;
+-            padding: 28px 36px;
+-            text-align: center;
+-            animation: slideUp 0.3s ease;
+-        }
+-        #round-overlay-msg {
+-            font-size: 1.3rem; font-weight: 800; color: #fbc531;
+-        }
+-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+-        @keyframes slideUp {
+-            from { opacity: 0; transform: translateY(20px); }
+-            to   { opacity: 1; transform: translateY(0); }
+-        }
+-
+-        /* ===== MATCH WIN OVERLAY ===== */
+-        #match-win-overlay {
+-            position: fixed; inset: 0;
+-            background: rgba(0,0,0,0.8);
+-            backdrop-filter: blur(8px);
+-            display: flex; flex-direction: column;
+-            align-items: center; justify-content: center;
+-            z-index: 700;
+-            gap: 16px;
+-        }
+-        #match-win-overlay.hidden { display: none; }
+-        #match-win-box {
+-            background: linear-gradient(135deg, #1a252f, #0d2918);
+-            border: 2px solid #fbc531;
+-            border-radius: 24px;
+-            padding: 36px 48px;
+-            text-align: center;
+-            animation: slideUp 0.4s ease;
+-        }
+-        #match-winner-text { font-size: 1.8rem; font-weight: 800; color: #fbc531; margin-bottom: 8px; }
+-        #match-stats-text  { font-size: 1rem; color: #bbb; margin-bottom: 20px; }
+-        .match-win-actions { display: flex; gap: 12px; justify-content: center; }
+-
+-        /* ===== LOG SIDEBAR ===== */
+-        #log-sidebar {
+-            position: fixed;
+-            right: 0; top: 0; bottom: 0;
+-            width: 210px;
+-            background: rgba(0,0,0,0.75);
+-            backdrop-filter: blur(8px);
+-            border-left: 1px solid rgba(255,255,255,0.12);
+-            display: flex; flex-direction: column;
+-            z-index: 200;
+-            transition: transform 0.3s ease;
+-        }
+-        #log-sidebar.collapsed { transform: translateX(100%); }
+-        #log-sidebar-header {
+-            display: flex; align-items: center; justify-content: space-between;
+-            padding: 8px 10px;
+-            background: rgba(255,255,255,0.05);
+-            border-bottom: 1px solid rgba(255,255,255,0.1);
+-            font-size: 0.75rem; font-weight: 800; color: #fbc531;
+-            letter-spacing: 0.5px;
+-        }
+-        #log-close-btn {
+-            background: none; border: none; color: #aaa;
+-            cursor: pointer; font-size: 1rem; line-height: 1;
+-        }
+-        #log-close-btn:hover { color: #fff; }
+-        #game-log-list {
+-            flex: 1; overflow-y: auto;
+-            list-style: none;
+-            padding: 6px;
+-            display: flex; flex-direction: column; gap: 3px;
+-            scrollbar-width: thin;
+-            scrollbar-color: rgba(255,255,255,0.2) transparent;
+-        }
+-        .log-entry {
+-            font-size: 0.7rem; padding: 3px 6px;
+-            border-radius: 5px;
+-            border-left: 2px solid transparent;
+-            line-height: 1.4;
+-        }
+-        .log-time { color: #666; margin-right: 4px; }
+-        .log-play  { border-left-color: #4cd137; background: rgba(76,209,55,0.06); }
+-        .log-trick { border-left-color: #fbc531; background: rgba(251,197,49,0.06); color: #fbc531; }
+-        .log-trump { border-left-color: #9b59b6; background: rgba(155,89,182,0.08); color: #d7bff5; }
+-        .log-result { border-left-color: #e84118; background: rgba(232,65,24,0.08); color: #ff9980; font-weight: 700; }
+-        .log-round  { border-left-color: #00a8ff; background: rgba(0,168,255,0.08); color: #7fcfff; font-weight: 700; }
+-        .log-match  { border-left-color: #fbc531; background: rgba(251,197,49,0.15); color: #fbc531; font-weight: 800; }
+-        .log-info   { color: #888; }
+-        .log-pass   { color: #aaa; border-left-color: #666; }
+-
+-        /* ===== TRUMP MODAL ===== */
+-        #modal-overlay {
+-            position: fixed; inset: 0;
+-            background: rgba(0,0,0,0.75);
+-            backdrop-filter: blur(6px);
+-            display: flex; align-items: center; justify-content: center;
+-            z-index: 500;
+-        }
+-        #modal-overlay.hidden { display: none; }
+-        #modal-box {
+-            background: #1a252f;
+-            border: 1px solid rgba(255,255,255,0.15);
+-            border-radius: 20px;
+-            padding: 26px 30px;
+-            max-width: 480px; width: 90%;
+-            text-align: center;
+-        }
+-        #modal-box h2 { color: #fbc531; margin-bottom: 6px; font-size: 1.35rem; }
+-        #modal-box p  { color: #bbb; font-size: 0.88rem; margin-bottom: 14px; }
+-        #hand-preview {
+-            display: flex; justify-content: center; align-items: flex-end;
+-            min-height: 118px; margin-bottom: 16px;
+-        }
+-        #trump-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+-        .suit-btn {
+-            font-family: 'Outfit', sans-serif;
+-            font-size: 1.05rem; font-weight: 700;
+-            padding: 11px 8px;
+-            border-radius: 10px; border: 2px solid transparent;
+-            background: #2c3e50; color: #fff;
+-            cursor: pointer;
+-            display: flex; align-items: center; justify-content: center; gap: 7px;
+-            transition: all .2s;
+-        }
+-        .suit-btn:hover { background: #3d5166; border-color: #fbc531; transform: translateY(-2px); }
+-        .suit-btn.red-s .ss { color: #e84118; }
+-        .suit-btn.blk-s .ss { color: #ecf0f1; }
+-
+-        /* ===== STATS MODAL ===== */
+-        #stats-modal {
+-            position: fixed; inset: 0;
+-            background: rgba(0,0,0,0.8);
+-            backdrop-filter: blur(6px);
+-            display: flex; align-items: center; justify-content: center;
+-            z-index: 800;
+-        }
+-        #stats-modal.hidden { display: none; }
+-        #stats-box {
+-            background: #1a252f;
+-            border: 1px solid rgba(255,255,255,0.15);
+-            border-radius: 20px;
+-            padding: 26px 30px;
+-            width: 500px; max-width: 95vw;
+-        }
+-        #stats-box h2 { color: #fbc531; margin-bottom: 16px; font-size: 1.25rem; text-align: center; }
+-        .stats-section { margin-bottom: 16px; }
+-        .stats-section h3 { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+-        .stats-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+-        .stats-table td { padding: 5px 8px; }
+-        .stats-table td:first-child { color: #ccc; width: 80px; }
+-        .stats-table td:nth-child(2) { color: #fff; font-weight: 700; width: 36px; text-align: center; }
+-        .stat-bar-bg { background: rgba(255,255,255,0.08); border-radius: 4px; height: 8px; overflow: hidden; }
+-        .stat-bar { height: 8px; border-radius: 4px; transition: width 0.8s ease; }
+-        .team-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+-        .team-stat-box {
+-            background: rgba(255,255,255,0.06);
+-            border-radius: 10px; padding: 10px 14px;
+-            font-size: 0.8rem;
+-        }
+-        .team-stat-box .team-name { font-size: 0.72rem; color: #888; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+-        .team-stat-row { display: flex; justify-content: space-between; color: #ccc; padding: 2px 0; }
+-        .team-stat-row span { color: #fff; font-weight: 700; }
+-        .mvp-box {
+-            background: rgba(251,197,49,0.1);
+-            border: 1px solid rgba(251,197,49,0.3);
+-            border-radius: 10px; padding: 8px 14px;
+-            font-size: 0.85rem; text-align: center; color: #fbc531;
+-        }
+-        .stats-close-wrap { display: flex; justify-content: center; margin-top: 16px; }
+-
+-        /* ===== ANIMATION UTILITIES ===== */
+-        .hidden { display: none !important; }
+-    </style>
+-</head>
+-<body>
+-
+-<!-- ====================================================== -->
+-<!--  MAIN GAME BOARD                                        -->
+-<!-- ====================================================== -->
+-<div id="game-board">
+-
+-    <!-- HEADER -->
+-    <div id="header-area">
+-        <div class="score-box">
+-            <span class="score-label">NS (You &amp; Partner)</span>
+-            <span class="score-value">
+-                <span id="ns-tricks">0</span> Tricks |
+-                <span id="ns-tokens">0</span> Tokens (Target 10)
+-            </span>
+-        </div>
+-
+-        <div id="status-banner">Click "Start Game" to begin!</div>
+-
+-        <div class="score-box">
+-            <span class="score-label">EW (Opponents)</span>
+-            <span class="score-value">
+-                <span id="ew-tricks">0</span> Tricks |
+-                <span id="ew-tokens">0</span> Tokens (Target 10)
+-            </span>
+-        </div>
+-
+-        <div class="header-controls">
+-            <button class="icon-btn" id="mute-btn" title="Toggle sound">🔊</button>
+-            <button class="icon-btn" id="log-toggle-btn" title="Toggle game log">📋</button>
+-        </div>
+-    </div>
+-
+-    <!-- WEST COLUMN -->
+-    <div id="west-area">
+-        <div id="player-1" class="player-area">
+-            <div class="player-label">
+-                West
+-                <span class="turn-badge hidden">...</span>
+-            </div>
+-            <div id="p1-hand" class="hand-v"></div>
+-        </div>
+-    </div>
+-
+-    <!-- CENTER COLUMN -->
+-    <div id="center-area">
+-
+-        <!-- North -->
+-        <div id="player-north">
+-            <div id="player-2" class="player-area">
+-                <div class="player-label">
+-                    Partner (North)
+-                    <span class="turn-badge hidden">...</span>
+-                </div>
+-            </div>
+-            <div id="p2-hand" class="hand-h"></div>
+-        </div>
+-
+-        <!-- Trick Table + History -->
+-        <div id="center-middle">
+-            <div id="trick-table">
+-                <div class="trick-table-bg"></div>
+-
+-                <!-- Deck pile (visible during dealing) -->
+-                <div id="deck-pile">
+-                    <div class="deck-card" style="transform:rotate(-3deg) translate(-2px,2px)"></div>
+-                    <div class="deck-card" style="transform:rotate(1deg)"></div>
+-                    <div class="deck-card"></div>
+-                </div>
+-
+-                <!-- Card slots -->
+-                <div class="trick-slot" id="trick-north"></div>
+-                <div class="trick-slot" id="trick-south"></div>
+-                <div class="trick-slot" id="trick-west"></div>
+-                <div class="trick-slot" id="trick-east"></div>
+-
+-                <!-- Trump badge -->
+-                <div id="trump-badge">
+-                    <span class="t-label">TRUMP</span>
+-                    <span class="t-suit" id="trump-icon">–</span>
+-                    <span class="t-caller" id="trump-caller"></span>
+-                </div>
+-            </div>
+-
+-            <!-- Trick history strip -->
+-            <div id="trick-history-panel">
+-                <span class="history-empty">No tricks yet</span>
+-            </div>
+-        </div>
+-
+-        <!-- South (You) -->
+-        <div id="player-south">
+-            <div id="p0-hand" class="hand-h"></div>
+-            <div id="player-0" class="player-area">
+-                <div class="player-label">
+-                    You (South)
+-                    <span class="turn-badge hidden">Your Turn!</span>
+-                </div>
+-            </div>
+-        </div>
+-
+-    </div>
+-
+-    <!-- EAST COLUMN -->
+-    <div id="east-area">
+-        <div id="player-3" class="player-area">
+-            <div class="player-label">
+-                East
+-                <span class="turn-badge hidden">...</span>
+-            </div>
+-            <div id="p3-hand" class="hand-v"></div>
+-        </div>
+-    </div>
+-
+-    <!-- FOOTER -->
+-    <div id="footer-area">
+-        <button id="start-btn" class="btn btn-primary">Start Game</button>
+-        <button id="sort-btn" class="btn btn-secondary" style="display:none">♠♥♦♣ Sort</button>
+-        <button id="show-stats-btn" class="btn btn-secondary" style="display:none">📊 Stats</button>
+-    </div>
+-
+-</div><!-- /#game-board -->
+-
+-<!-- ====================================================== -->
+-<!--  LOG SIDEBAR (outside grid, fixed right)               -->
+-<!-- ====================================================== -->
+-<div id="log-sidebar" class="collapsed">
+-    <div id="log-sidebar-header">
+-        📋 GAME LOG
+-        <button id="log-close-btn" title="Close log">✕</button>
+-    </div>
+-    <ul id="game-log-list"></ul>
+-</div>
+-
+-<!-- ====================================================== -->
+-<!--  TRICK WIN FLOATING BANNER                             -->
+-<!-- ====================================================== -->
+-<div id="trick-win-overlay" class="hidden"></div>
+-
+-<!-- ====================================================== -->
+-<!--  ROUND RESULT OVERLAY                                  -->
+-<!-- ====================================================== -->
+-<div id="round-overlay" class="hidden">
+-    <div id="round-overlay-box">
+-        <div id="round-overlay-msg"></div>
+-    </div>
+-</div>
+-
+-<!-- ====================================================== -->
+-<!--  MATCH WIN OVERLAY                                     -->
+-<!-- ====================================================== -->
+-<div id="match-win-overlay" class="hidden">
+-    <div id="match-win-box">
+-        <div id="match-winner-text"></div>
+-        <div id="match-stats-text"></div>
+-        <div class="match-win-actions">
+-            <button id="match-play-again-btn" class="btn btn-primary">Play Again</button>
+-            <button id="show-stats-btn-match" class="btn btn-secondary">📊 View Stats</button>
+-        </div>
+-    </div>
+-</div>
+-
+-<!-- ====================================================== -->
+-<!--  TRUMP SELECTION MODAL                                 -->
+-<!-- ====================================================== -->
+-<div id="modal-overlay" class="hidden">
+-    <div id="modal-box">
+-        <h2>Choose Trump Suit</h2>
+-        <p>Your first 4 cards — choose the trump suit:</p>
+-        <div id="hand-preview"></div>
+-        <div id="trump-opts">
+-            <button class="suit-btn red-s" data-suit="Hearts"><span class="ss">♥</span> Hearts</button>
+-            <button class="suit-btn red-s" data-suit="Diamonds"><span class="ss">♦</span> Diamonds</button>
+-            <button class="suit-btn blk-s" data-suit="Clubs"><span class="ss">♣</span> Clubs</button>
+-            <button class="suit-btn blk-s" data-suit="Spades"><span class="ss">♠</span> Spades</button>
+-        </div>
+-    </div>
+-</div>
+-
+-<!-- ====================================================== -->
+-<!--  STATS MODAL                                           -->
+-<!-- ====================================================== -->
+-<div id="stats-modal" class="hidden">
+-    <div id="stats-box">
+-        <h2>📊 Game Statistics</h2>
+-
+-        <div class="stats-section">
+-            <h3>Tricks Won</h3>
+-            <table class="stats-table">
+-                <tbody id="stats-tricks-body"></tbody>
+-            </table>
+-        </div>
+-
+-        <div class="stats-section">
+-            <div class="team-stats-grid">
+-                <div class="team-stat-box">
+-                    <div class="team-name">NS — You &amp; Partner</div>
+-                    <div class="team-stat-row">Rounds Won <span id="stats-ns-wins">0</span></div>
+-                    <div class="team-stat-row">Kaputhis <span id="stats-ns-kaputhis">0</span></div>
+-                    <div class="team-stat-row">Defends <span id="stats-ns-defends">0</span></div>
+-                </div>
+-                <div class="team-stat-box">
+-                    <div class="team-name">EW — Opponents</div>
+-                    <div class="team-stat-row">Rounds Won <span id="stats-ew-wins">0</span></div>
+-                    <div class="team-stat-row">Kaputhis <span id="stats-ew-kaputhis">0</span></div>
+-                    <div class="team-stat-row">Defends <span id="stats-ew-defends">0</span></div>
+-                </div>
+-            </div>
+-        </div>
+-
+-        <div class="stats-section">
+-            <h3>⭐ Most Valuable Player</h3>
+-            <div class="mvp-box" id="stats-mvp">—</div>
+-        </div>
+-
+-        <div class="stats-close-wrap">
+-            <button id="stats-close-btn" class="btn btn-secondary">Close</button>
+-        </div>
+-    </div>
+-</div>
+-
+-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+-<script type="module" src="script.js"></script>
+-</body>
+-</html>
++<!DOCTYPE html>
++<html lang="en">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <meta http-equiv="refresh" content="0; url=main-menu.html">
++    <title>Omi</title>
++    <meta name="robots" content="noindex">
++</head>
++<body>
++    <p>Opening <a href="main-menu.html">Omi Main Menu</a>…</p>
++</body>
++</html>
+diff --git a/main-menu.html b/main-menu.html
+new file mode 100644
+index 0000000..bdf974d
+--- /dev/null
++++ b/main-menu.html
+@@ -0,0 +1,107 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <meta name="description" content="Omi single-player main menu.">
++    <title>Omi — Main Menu</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com">
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
++    <link rel="stylesheet" href="styles/tokens.css">
++    <link rel="stylesheet" href="styles/base.css">
++    <link rel="stylesheet" href="styles/typography.css">
++    <link rel="stylesheet" href="styles/menu.css">
++</head>
++<body class="menu-page">
++    <main class="menu-shell">
++        <header class="menu-topbar">
++            <a class="menu-brand" href="main-menu.html" aria-label="Omi main menu">
++                <span class="brand-wordmark">Omi</span>
++                <span class="brand-suits" aria-hidden="true">♠ ♥ ♦ ♣</span>
++            </a>
++
++            <div class="menu-top-actions">
++                <button class="round-icon-button" id="settings-button" type="button" aria-label="Open settings">
++                    <svg viewBox="0 0 24 24" aria-hidden="true">
++                        <circle cx="12" cy="12" r="3.1"></circle>
++                        <path d="M19 13.5v-3l-2.2-.6a7.1 7.1 0 0 0-.8-1.8l1.1-2-2.1-2.1-2 1.1a7.1 7.1 0 0 0-1.8-.8L10.5 2h-3l-.6 2.2a7.1 7.1 0 0 0-1.8.8l-2-1.1L1 6l1.1 2a7.1 7.1 0 0 0-.8 1.8L-1 10.5v3l2.2.6a7.1 7.1 0 0 0 .8 1.8l-1.1 2L3 20l2-1.1a7.1 7.1 0 0 0 1.8.8l.6 2.3h3l.6-2.2a7.1 7.1 0 0 0 1.8-.8l2 1.1 2.1-2.1-1.1-2a7.1 7.1 0 0 0 .8-1.8z" transform="translate(3 0)"></path>
++                    </svg>
++                </button>
++            </div>
++        </header>
++
++        <section class="menu-main" aria-labelledby="main-menu-title">
++            <div class="menu-rail" aria-hidden="true"></div>
++
++            <div class="menu-content">
++                <!-- The approved primary logo is intentionally not recreated here.
++                     Add the official asset later without altering its geometry. -->
++                <div class="suit-crown" aria-hidden="true">
++                    <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
++                </div>
++                <h1 class="menu-title" id="main-menu-title">Omi</h1>
++                <p class="menu-subtitle">A Sri Lankan card game</p>
++
++                <nav class="menu-actions" aria-label="Main menu">
++                    <a class="menu-action menu-action-primary" id="play-solo-link" href="game.html">
++                        <span>Play Solo</span>
++                        <span class="action-caption">Single Player</span>
++                    </a>
++
++                    <a class="menu-action menu-action-secondary tutorial-status" id="tutorial-link" href="tutorial.html" data-complete="false">
++                        <span>Tutorial</span>
++                        <span class="action-caption">Learn Omi step by step</span>
++                    </a>
++
++                    <button class="menu-action menu-action-secondary" id="settings-menu-button" type="button">
++                        <span>Settings</span>
++                        <span class="action-caption">Game preferences</span>
++                    </button>
++                </nav>
++            </div>
++
++            <div class="menu-rail" aria-hidden="true"></div>
++        </section>
++
++        <footer class="menu-footer">
++            <span>Single Player Foundation</span>
++            <span>Standard Omi · 10 Token Match</span>
++        </footer>
++    </main>
++
++    <div class="settings-backdrop" id="settings-backdrop" hidden>
++        <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
++            <div class="settings-header">
++                <div>
++                    <h2 class="settings-title" id="settings-title">Settings</h2>
++                    <p class="settings-copy">These options are applied when you start a solo match.</p>
++                </div>
++                <button class="settings-close" id="settings-close" type="button" aria-label="Close settings">×</button>
++            </div>
++
++            <div class="settings-grid">
++                <div class="setting-field">
++                    <label for="difficulty-setting">AI difficulty</label>
++                    <select id="difficulty-setting">
++                        <option value="smart">Smart</option>
++                        <option value="casual">Casual</option>
++                    </select>
++                </div>
++
++                <div class="setting-field">
++                    <label for="sound-setting">Sound</label>
++                    <select id="sound-setting">
++                        <option value="on">On</option>
++                        <option value="off">Off</option>
++                    </select>
++                </div>
++            </div>
++
++            <p class="settings-note">Animation speed and the full persistent settings subsystem are scheduled for the dedicated settings patch. Reduced-motion preferences are already respected automatically through the operating system/browser setting.</p>
++        </section>
++    </div>
++
++    <script type="module" src="src/ui/main-menu.js"></script>
++</body>
++</html>
+diff --git a/script.js b/script.js
+index 2ba20a0..febacdc 100644
+--- a/script.js
++++ b/script.js
+@@ -23,10 +23,19 @@ import { SinglePlayerController } from './src/controllers/SinglePlayerController
+ 
+ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+ 
++/* Batch 3 menu preferences are passed as query parameters by main-menu.html.
++ * The dedicated settings subsystem in Patch 12 will replace this lightweight
++ * bootstrap bridge without changing the controller API. */
++const gameParams = new URLSearchParams(window.location.search);
++const initialDifficulty = gameParams.get('difficulty') === 'casual'
++    ? AI_DIFFICULTY.CASUAL
++    : AI_DIFFICULTY.SMART;
++const initiallyMuted = gameParams.get('sound') === 'off';
++
+ const controller = new SinglePlayerController({
+     engine: new GameEngine(),
+     humanPlayerId: 0,
+-    difficulty: AI_DIFFICULTY.SMART,
++    difficulty: initialDifficulty,
+     hooks: {
+         onEvents: handleEngineEvents,
+         afterDealBatch: handleDealBatchAnimation,
+@@ -48,7 +57,7 @@ const state = controller.state;
+ const runtime = {
+     processing: false,
+     dealing: false,
+-    muted: false,
++    muted: initiallyMuted,
+     stats: {
+         tricksWonByPlayer: [0, 0, 0, 0],
+         roundsWon: [0, 0],
+@@ -726,6 +735,10 @@ function showStatsPanel() {
+     document.getElementById('stats-modal').classList.remove('hidden');
+ }
+ 
++/* Reflect menu-selected sound preference before the first interaction. */
++const initialMuteButton = document.getElementById('mute-btn');
++if (initialMuteButton) initialMuteButton.textContent = runtime.muted ? '🔇' : '🔊';
++
+ /* ===== EVENT LISTENERS ===== */
+ 
+ // Sort hand
+diff --git a/src/ui/main-menu.js b/src/ui/main-menu.js
+new file mode 100644
+index 0000000..42958ee
+--- /dev/null
++++ b/src/ui/main-menu.js
+@@ -0,0 +1,90 @@
++const PREFERENCES_KEY = 'omi.menu.preferences.v1';
++const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
++
++const DEFAULT_PREFERENCES = Object.freeze({
++    difficulty: 'smart',
++    sound: 'on',
++});
++
++function loadPreferences() {
++    try {
++        const saved = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? '{}');
++        return {
++            difficulty: saved.difficulty === 'casual' ? 'casual' : DEFAULT_PREFERENCES.difficulty,
++            sound: saved.sound === 'off' ? 'off' : DEFAULT_PREFERENCES.sound,
++        };
++    } catch {
++        return { ...DEFAULT_PREFERENCES };
++    }
++}
++
++function savePreferences(preferences) {
++    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
++}
++
++const settingsBackdrop = document.getElementById('settings-backdrop');
++const settingsButton = document.getElementById('settings-button');
++const settingsMenuButton = document.getElementById('settings-menu-button');
++const settingsClose = document.getElementById('settings-close');
++const difficultySetting = document.getElementById('difficulty-setting');
++const soundSetting = document.getElementById('sound-setting');
++const playSoloLink = document.getElementById('play-solo-link');
++const tutorialLink = document.getElementById('tutorial-link');
++
++let preferences = loadPreferences();
++let lastFocusedElement = null;
++
++function updatePlayLink() {
++    const params = new URLSearchParams({
++        difficulty: preferences.difficulty,
++        sound: preferences.sound,
++    });
++    playSoloLink.href = `game.html?${params.toString()}`;
++}
++
++function syncControls() {
++    difficultySetting.value = preferences.difficulty;
++    soundSetting.value = preferences.sound;
++    updatePlayLink();
++
++    const tutorialComplete = localStorage.getItem(TUTORIAL_COMPLETE_KEY) === 'true';
++    tutorialLink.dataset.complete = String(tutorialComplete);
++}
++
++function openSettings() {
++    lastFocusedElement = document.activeElement;
++    settingsBackdrop.hidden = false;
++    settingsClose.focus();
++}
++
++function closeSettings() {
++    settingsBackdrop.hidden = true;
++    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
++}
++
++function commitPreferences() {
++    preferences = {
++        difficulty: difficultySetting.value === 'casual' ? 'casual' : 'smart',
++        sound: soundSetting.value === 'off' ? 'off' : 'on',
++    };
++    savePreferences(preferences);
++    updatePlayLink();
++}
++
++settingsButton.addEventListener('click', openSettings);
++settingsMenuButton.addEventListener('click', openSettings);
++settingsClose.addEventListener('click', closeSettings);
++
++difficultySetting.addEventListener('change', commitPreferences);
++soundSetting.addEventListener('change', commitPreferences);
++
++settingsBackdrop.addEventListener('click', event => {
++    if (event.target === settingsBackdrop) closeSettings();
++});
++
++document.addEventListener('keydown', event => {
++    if (event.key === 'Escape' && !settingsBackdrop.hidden) closeSettings();
++});
++
++window.addEventListener('pageshow', syncControls);
++syncControls();
+diff --git a/src/ui/tutorial.js b/src/ui/tutorial.js
+new file mode 100644
+index 0000000..12ba475
+--- /dev/null
++++ b/src/ui/tutorial.js
+@@ -0,0 +1,182 @@
++import { TUTORIAL_STEPS } from './tutorialData.js';
++
++const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
++
++const progress = document.getElementById('tutorial-progress');
++const kicker = document.getElementById('tutorial-kicker');
++const title = document.getElementById('tutorial-title');
++const body = document.getElementById('tutorial-body');
++const rules = document.getElementById('tutorial-rules');
++const visualStage = document.getElementById('visual-stage');
++const visualCaption = document.getElementById('visual-caption');
++const dots = document.getElementById('tutorial-dots');
++const backButton = document.getElementById('tutorial-back');
++const nextButton = document.getElementById('tutorial-next');
++const copyPanel = document.getElementById('tutorial-copy');
++const visualPanel = document.getElementById('tutorial-visual');
++
++let currentIndex = 0;
++
++const miniCard = (label, { red = false, state = '' } = {}) =>
++    `<div class="mini-card-ui${red ? ' red' : ''}${state ? ` ${state}` : ''}">${label}</div>`;
++
++function renderVisual(type) {
++    switch (type) {
++        case 'teams':
++            return `
++                <div class="seat-map">
++                    <div class="team-axis vertical"></div>
++                    <div class="team-axis horizontal"></div>
++                    <div class="seat n">Partner</div>
++                    <div class="seat s">You</div>
++                    <div class="seat w">West</div>
++                    <div class="seat e">East</div>
++                </div>`;
++        case 'deck':
++            return `
++                <div class="tutorial-card-fan">
++                    <div class="tutorial-card-face">A♠</div>
++                    <div class="tutorial-card-face red">K♥</div>
++                    <div class="tutorial-card-face">Q♣</div>
++                    <div class="tutorial-card-face red">J♦</div>
++                </div>`;
++        case 'ranking':
++            return `<div class="rank-ladder">${['7','8','9','10','J','Q','K','A'].map(rank => `<div class="rank-tile">${rank}</div>`).join('')}</div>`;
++        case 'trump':
++            return `
++                <div class="trump-demo">
++                    <div class="four-cards">
++                        ${miniCard('A♥', { red: true })}${miniCard('K♥', { red: true })}${miniCard('9♣')}${miniCard('7♠')}
++                    </div>
++                    <div class="suit-options" aria-label="Example trump selection">
++                        <div class="suit-option">♠</div>
++                        <div class="suit-option selected">♥</div>
++                        <div class="suit-option">♦</div>
++                        <div class="suit-option">♣</div>
++                    </div>
++                </div>`;
++        case 'leading':
++            return `
++                <div class="lead-demo">
++                    ${miniCard('Q♣')}
++                    <div class="lead-caption">Lead suit · Clubs</div>
++                </div>`;
++        case 'follow':
++            return `
++                <div class="follow-demo">
++                    <div class="lead-caption">Clubs were led</div>
++                    <div class="legal-hand">
++                        ${miniCard('A♠', { state: 'invalid' })}
++                        ${miniCard('10♣', { state: 'valid' })}
++                        ${miniCard('8♥', { red: true, state: 'invalid' })}
++                        ${miniCard('7♣', { state: 'valid' })}
++                    </div>
++                </div>`;
++        case 'trump-power':
++            return `
++                <div class="trick-map">
++                    <div class="trick-card-ui n">A♣</div>
++                    <div class="trick-card-ui w">K♣</div>
++                    <div class="trick-card-ui e red winner">7♥</div>
++                    <div class="trick-card-ui s">Q♣</div>
++                </div>`;
++        case 'resolve':
++            return `
++                <div class="trick-map">
++                    <div class="trick-card-ui n">9♠</div>
++                    <div class="trick-card-ui w winner">A♠</div>
++                    <div class="trick-card-ui e red">K♦</div>
++                    <div class="trick-card-ui s">Q♠</div>
++                </div>`;
++        case 'scoring':
++            return `
++                <div class="scoring-board">
++                    <div class="scoring-row"><div class="scoring-name">Trump team<span class="scoring-sub">5–7 tricks</span></div><div class="scoring-value">+1</div></div>
++                    <div class="scoring-row"><div class="scoring-name">Defenders<span class="scoring-sub">5–7 tricks</span></div><div class="scoring-value">+2</div></div>
++                    <div class="scoring-row"><div class="scoring-name">Kapothi<span class="scoring-sub">8 tricks</span></div><div class="scoring-value">+3</div></div>
++                </div>`;
++        case 'target':
++            return `
++                <div class="target-demo">
++                    <div class="target-number">10</div>
++                    <div class="target-label">Tokens to win</div>
++                </div>`;
++        case 'ready':
++            return `
++                <div class="ready-demo">
++                    <div class="ready-ring">✓</div>
++                    <div class="target-label">Ready to play</div>
++                </div>`;
++        default:
++            return '';
++    }
++}
++
++function restartEntryAnimation() {
++    for (const element of [copyPanel, visualPanel]) {
++        element.style.animation = 'none';
++        // Force layout so the animation can replay when the tutorial step changes.
++        void element.offsetWidth;
++        element.style.animation = '';
++    }
++}
++
++function renderStep() {
++    const step = TUTORIAL_STEPS[currentIndex];
++    progress.textContent = `Step ${currentIndex + 1} of ${TUTORIAL_STEPS.length}`;
++    kicker.textContent = step.kicker;
++    title.textContent = step.title;
++    body.textContent = step.body;
++    rules.replaceChildren(...step.bullets.map(item => {
++        const li = document.createElement('li');
++        li.textContent = item;
++        return li;
++    }));
++
++    visualStage.innerHTML = renderVisual(step.visual);
++    visualCaption.textContent = step.caption;
++
++    dots.innerHTML = TUTORIAL_STEPS.map((_, index) => {
++        const classes = ['tutorial-dot'];
++        if (index < currentIndex) classes.push('done');
++        if (index === currentIndex) classes.push('active');
++        return `<span class="${classes.join(' ')}"></span>`;
++    }).join('');
++
++    backButton.disabled = currentIndex === 0;
++    nextButton.textContent = currentIndex === TUTORIAL_STEPS.length - 1 ? 'Finish' : 'Next';
++    restartEntryAnimation();
++}
++
++function move(direction) {
++    const nextIndex = currentIndex + direction;
++    if (nextIndex < 0 || nextIndex >= TUTORIAL_STEPS.length) return;
++    currentIndex = nextIndex;
++    renderStep();
++}
++
++backButton.addEventListener('click', () => move(-1));
++nextButton.addEventListener('click', () => {
++    if (currentIndex < TUTORIAL_STEPS.length - 1) {
++        move(1);
++        return;
++    }
++
++    localStorage.setItem(TUTORIAL_COMPLETE_KEY, 'true');
++    window.location.assign('main-menu.html');
++});
++
++document.addEventListener('keydown', event => {
++    if (event.key === 'ArrowLeft') {
++        event.preventDefault();
++        move(-1);
++    } else if (event.key === 'ArrowRight') {
++        event.preventDefault();
++        if (currentIndex === TUTORIAL_STEPS.length - 1) nextButton.click();
++        else move(1);
++    } else if (event.key === 'Escape') {
++        window.location.assign('main-menu.html');
++    }
++});
++
++renderStep();
+diff --git a/src/ui/tutorialData.js b/src/ui/tutorialData.js
+new file mode 100644
+index 0000000..cdd8560
+--- /dev/null
++++ b/src/ui/tutorialData.js
+@@ -0,0 +1,150 @@
++/**
++ * Static instructional content for the standard single-player Omi tutorial.
++ * Keep this content aligned with the authoritative standard rules in src/engine/.
++ */
++export const TUTORIAL_STEPS = Object.freeze([
++    {
++        id: 'teams',
++        kicker: 'Step 01 · The table',
++        title: 'Four players. Two teams.',
++        body: 'Omi is a partnership trick-taking game. You sit opposite your partner while the two remaining seats form the opposing team.',
++        bullets: [
++            'South (you) and North are partners.',
++            'East and West are partners.',
++            'Partners combine their tricks and tokens.',
++        ],
++        visual: 'teams',
++        caption: 'Your partner always sits opposite you.',
++    },
++    {
++        id: 'deck',
++        kicker: 'Step 02 · The deck',
++        title: '32 cards only.',
++        body: 'Standard Omi uses the four normal suits, but only ranks Seven through Ace. Each player ultimately receives eight cards.',
++        bullets: [
++            'Suits: Spades, Hearts, Diamonds and Clubs.',
++            'Eight ranks per suit: 7, 8, 9, 10, J, Q, K, A.',
++            'No Joker is used in Standard Mode.',
++        ],
++        visual: 'deck',
++        caption: 'Four suits × eight ranks = 32 cards.',
++    },
++    {
++        id: 'ranking',
++        kicker: 'Step 03 · Card strength',
++        title: 'Ace is highest.',
++        body: 'When cards of the same relevant suit compete in a trick, rank decides which card is stronger.',
++        bullets: [
++            'Highest to lowest: A, K, Q, J, 10, 9, 8, 7.',
++            'Suit rules and trump are checked before rank.',
++        ],
++        visual: 'ranking',
++        caption: 'Strength increases from Seven to Ace.',
++    },
++    {
++        id: 'trump',
++        kicker: 'Step 04 · Deal and trump',
++        title: 'Choose trump after four cards.',
++        body: 'The dealer gives four cards to every player. The player to the dealer’s right must choose a trump suit from those first four cards. Then everyone receives four more cards.',
++        bullets: [
++            'The trump chooser cannot see the second four cards first.',
++            'Passing is not available in Standard Mode.',
++            'After the second deal, every player has eight cards.',
++        ],
++        visual: 'trump',
++        caption: 'Example: Hearts are chosen as trump.',
++    },
++    {
++        id: 'leading',
++        kicker: 'Step 05 · Leading',
++        title: 'One card starts the trick.',
++        body: 'The first player leads one card. That card establishes the lead suit. Play continues counter-clockwise until all four players have played once.',
++        bullets: [
++            'Four played cards make one trick.',
++            'The trump chooser leads the first trick of the hand.',
++            'The trick winner leads the next trick.',
++        ],
++        visual: 'leading',
++        caption: 'A Club lead means Clubs are the lead suit.',
++    },
++    {
++        id: 'follow-suit',
++        kicker: 'Step 06 · Following suit',
++        title: 'You must follow suit.',
++        body: 'If you hold at least one card from the lead suit, you must play that suit. You may play another suit only when you have none of the lead suit.',
++        bullets: [
++            'Legal cards remain available to play.',
++            'Off-suit cards are illegal while you still hold the lead suit.',
++            'When void in the lead suit, you may discard or play trump.',
++        ],
++        visual: 'follow',
++        caption: 'Clubs are led, so the Club cards are the legal choices.',
++    },
++    {
++        id: 'trump-power',
++        kicker: 'Step 07 · Trump',
++        title: 'Trump changes the trick.',
++        body: 'Any trump card beats every non-trump card in the trick. If more than one trump is played, the highest-ranked trump wins.',
++        bullets: [
++            'Trump can win even when it has a low rank.',
++            'Among trump cards, normal rank order still applies.',
++            'You still must follow the lead suit when you can.',
++        ],
++        visual: 'trump-power',
++        caption: 'Hearts are trump: 7♥ beats A♣ in this example.',
++    },
++    {
++        id: 'resolve-trick',
++        kicker: 'Step 08 · Trick resolution',
++        title: 'Read the trick in order.',
++        body: 'First check whether any trump card was played. If there is no trump, only cards of the lead suit can win.',
++        bullets: [
++            'Trump present → highest trump wins.',
++            'No trump → highest card of the lead suit wins.',
++            'Unrelated off-suit cards cannot win without being trump.',
++        ],
++        visual: 'resolve',
++        caption: 'Spades were led; no trump appears; A♠ wins.',
++    },
++    {
++        id: 'scoring',
++        kicker: 'Step 09 · Hand scoring',
++        title: 'Eight tricks decide the hand.',
++        body: 'After all eight tricks, the two teams compare totals. Standard Omi awards different base tokens depending on whether the trump-calling team or defending team wins.',
++        bullets: [
++            'Trump-calling team wins 5–7 tricks → 1 base token.',
++            'Defending team wins 5–7 tricks → 2 base tokens.',
++            'A complete 8-trick Kapothi → 3 base tokens.',
++        ],
++        visual: 'scoring',
++        caption: 'Carry tokens, when present, are added to the next decisive award.',
++    },
++    {
++        id: 'tie-and-target',
++        kicker: 'Step 10 · Tie and match target',
++        title: 'A 4–4 hand carries forward.',
++        body: 'A tied hand awards no tokens immediately. Instead, it adds one carry token to the next decisive hand. Standard matches target ten tokens.',
++        bullets: [
++            '4–4 → no immediate token award.',
++            'Each tied hand adds one carry token.',
++            'The carry is added to the next decisive hand, then reset.',
++            'The match target is 10 tokens.',
++        ],
++        visual: 'target',
++        caption: 'First team to reach the 10-token target wins the match.',
++    },
++    {
++        id: 'strategy',
++        kicker: 'Step 11 · Beginner strategy',
++        title: 'Now learn by playing.',
++        body: 'The rules are simple, but strong Omi play comes from memory, timing and partnership awareness. Start by watching the public information on the table.',
++        bullets: [
++            'Remember high cards that have already been played.',
++            'Notice when a player cannot follow a suit.',
++            'Avoid wasting strong trump when your partner is already winning.',
++            'Use the Tutorial again whenever you want a refresher.',
++        ],
++        visual: 'ready',
++        caption: 'You are ready for a Standard Omi match.',
++    },
++]);
+diff --git a/style.css b/style.css
+index e89c8c6..d12dfba 100644
+--- a/style.css
++++ b/style.css
+@@ -1 +1,8 @@
+-/* style.css is intentionally empty – all styles are embedded in index.html */
++/* Gameplay stylesheet entry point.
++ * Batch 3 introduces shared design tokens and typography while preserving the
++ * existing table layout. The full responsive table redesign begins in Patch 9.
++ */
++@import url('./styles/tokens.css');
++@import url('./styles/base.css');
++@import url('./styles/typography.css');
++@import url('./styles/game-legacy.css');
+diff --git a/styles/base.css b/styles/base.css
+new file mode 100644
+index 0000000..d9d30d3
+--- /dev/null
++++ b/styles/base.css
+@@ -0,0 +1,67 @@
++*, *::before, *::after {
++    box-sizing: border-box;
++}
++
++html {
++    color-scheme: dark;
++    -webkit-text-size-adjust: 100%;
++}
++
++body {
++    margin: 0;
++    min-width: 320px;
++    font-family: var(--font-ui);
++    background: var(--menu-bg);
++    color: var(--menu-text);
++    -webkit-font-smoothing: antialiased;
++    text-rendering: optimizeLegibility;
++}
++
++button,
++select,
++input,
++textarea {
++    font: inherit;
++}
++
++button,
++a {
++    -webkit-tap-highlight-color: transparent;
++}
++
++a {
++    color: inherit;
++}
++
++button:focus-visible,
++a:focus-visible,
++select:focus-visible,
++[tabindex]:focus-visible {
++    outline: 2px solid var(--accent-gold);
++    outline-offset: 3px;
++}
++
++.visually-hidden {
++    position: absolute !important;
++    width: 1px !important;
++    height: 1px !important;
++    padding: 0 !important;
++    margin: -1px !important;
++    overflow: hidden !important;
++    clip: rect(0, 0, 0, 0) !important;
++    white-space: nowrap !important;
++    border: 0 !important;
++}
++
++@media (prefers-reduced-motion: reduce) {
++    html:focus-within {
++        scroll-behavior: auto;
++    }
++
++    *, *::before, *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++    }
++}
+diff --git a/styles/game-legacy.css b/styles/game-legacy.css
+new file mode 100644
+index 0000000..3e1b7d7
+--- /dev/null
++++ b/styles/game-legacy.css
+@@ -0,0 +1,580 @@
++/* ===== RESET ===== */
++*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
++html, body {
++    width: 100%; height: 100%;
++    overflow: hidden;
++    font-family: var(--font-ui);
++    background: #0a1a0f;
++    color: #fff;
++}
++
++/* ===== GAME BOARD — CSS Grid ===== */
++#game-board {
++    width: 100vw;
++    height: 100vh;
++    display: grid;
++    grid-template-rows: auto 1fr auto;
++    grid-template-columns: 148px 1fr 148px;
++    grid-template-areas:
++        "header  header  header"
++        "west    center  east"
++        "footer  footer  footer";
++    background: radial-gradient(ellipse at center, #1e5e3a 0%, #0d2918 100%);
++}
++
++/* ===== HEADER ===== */
++#header-area {
++    grid-area: header;
++    display: flex;
++    justify-content: space-between;
++    align-items: center;
++    padding: 7px 16px;
++    gap: 8px;
++    background: rgba(0,0,0,0.5);
++    border-bottom: 1px solid rgba(255,255,255,0.1);
++    z-index: 10;
++}
++.score-box { text-align: center; min-width: 130px; }
++.score-label { font-size: 0.7rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.6px; display: block; }
++.score-value { font-size: 1rem; font-weight: 800; color: #4cd137; }
++#status-banner {
++    flex: 1;
++    background: rgba(255,255,255,0.1);
++    border: 1px solid rgba(255,255,255,0.18);
++    border-radius: 20px;
++    padding: 5px 18px;
++    font-size: 0.95rem;
++    font-weight: 800;
++    color: #fbc531;
++    text-align: center;
++    white-space: nowrap;
++    overflow: hidden;
++    text-overflow: ellipsis;
++}
++.header-controls {
++    display: flex;
++    align-items: center;
++    gap: 8px;
++}
++.icon-btn {
++    background: rgba(255,255,255,0.12);
++    border: 1px solid rgba(255,255,255,0.2);
++    color: #fff;
++    border-radius: 10px;
++    width: 34px; height: 34px;
++    font-size: 1.1rem;
++    cursor: pointer;
++    display: flex; align-items: center; justify-content: center;
++    transition: background .2s, transform .15s;
++}
++.icon-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.08); }
++
++/* ===== WEST / EAST SIDE COLUMNS ===== */
++#west-area {
++    grid-area: west;
++    display: flex; flex-direction: column;
++    align-items: center; justify-content: center;
++    padding: 8px 4px; overflow: hidden;
++}
++#east-area {
++    grid-area: east;
++    display: flex; flex-direction: column;
++    align-items: center; justify-content: center;
++    padding: 8px 4px; overflow: hidden;
++}
++
++/* ===== CENTER COLUMN ===== */
++#center-area {
++    grid-area: center;
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    justify-content: space-between;
++    padding: 8px 0 6px;
++    overflow: hidden;
++    gap: 4px;
++}
++
++/* ===== PLAYER NORTH / SOUTH WRAPPERS ===== */
++#player-north, #player-south {
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    gap: 4px;
++}
++
++/* ===== CENTER MIDDLE: TRICK TABLE + HISTORY ===== */
++#center-middle {
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    gap: 6px;
++    flex-shrink: 0;
++}
++
++/* ===== TRICK TABLE ===== */
++#trick-table {
++    position: relative;
++    width: 260px;
++    height: 240px;
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    flex-shrink: 0;
++}
++.trick-table-bg {
++    position: absolute;
++    inset: 0;
++    border-radius: 50%;
++    background: rgba(0,0,0,0.28);
++    border: 2px dashed rgba(255,255,255,0.13);
++}
++.trick-slot {
++    position: absolute;
++    width: 72px; height: 108px;
++    display: flex; align-items: center; justify-content: center;
++}
++#trick-north { top: 8px; left: 50%; transform: translateX(-50%); }
++#trick-south { bottom: 8px; left: 50%; transform: translateX(-50%); }
++#trick-west  { left: 8px; top: 50%; transform: translateY(-50%); }
++#trick-east  { right: 8px; top: 50%; transform: translateY(-50%); }
++
++.winner-flash {
++    animation: winFlash 0.6s ease-out;
++}
++@keyframes winFlash {
++    0%   { filter: drop-shadow(0 0 0px #fbc531); }
++    40%  { filter: drop-shadow(0 0 18px #fbc531); }
++    100% { filter: drop-shadow(0 0 0px #fbc531); }
++}
++
++/* ===== DECK PILE ===== */
++#deck-pile {
++    position: absolute;
++    width: 72px; height: 108px;
++    top: 50%; left: 50%;
++    transform: translate(-50%, -50%);
++    z-index: 6;
++    display: none;
++    align-items: center; justify-content: center;
++}
++.deck-card {
++    position: absolute;
++    width: 72px; height: 108px;
++    background: linear-gradient(135deg, #1a2e82, #0b1a4f);
++    border: 2px solid #f0c040;
++    border-radius: 8px;
++    box-shadow: 2px 4px 10px rgba(0,0,0,0.5);
++}
++
++/* ===== TRUMP BADGE ===== */
++#trump-badge {
++    position: absolute;
++    display: flex; flex-direction: column; align-items: center;
++    background: rgba(0,0,0,0.8);
++    border: 1px solid rgba(255,255,255,0.2);
++    border-radius: 12px;
++    padding: 3px 10px;
++    z-index: 5;
++}
++#trump-badge .t-label { font-size: 0.58rem; font-weight: 800; letter-spacing: 1px; color: #fbc531; }
++#trump-badge .t-suit  { font-size: 1.4rem; line-height: 1.1; }
++#trump-badge .t-caller { font-size: 0.62rem; color: #bbb; }
++
++/* ===== TRICK HISTORY STRIP ===== */
++#trick-history-panel {
++    display: flex;
++    flex-direction: row;
++    gap: 8px;
++    align-items: flex-start;
++    min-height: 52px;
++    padding: 4px 6px;
++    background: rgba(0,0,0,0.25);
++    border-radius: 10px;
++    max-width: 260px;
++    overflow-x: auto;
++}
++.history-item { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
++.history-label { font-size: 0.58rem; color: #aaa; white-space: nowrap; }
++.history-cards { display: flex; flex-direction: row; gap: 2px; }
++.mini-card {
++    font-size: 0.65rem; font-weight: 800;
++    background: #fff; color: #111;
++    padding: 1px 3px;
++    border-radius: 4px;
++    border: 1px solid #ccc;
++    white-space: nowrap;
++}
++.mini-card.red { color: #d00; }
++.history-empty { font-size: 0.7rem; color: #666; align-self: center; }
++
++/* ===== PLAYER LABEL ===== */
++.player-area { display: flex; flex-direction: column; align-items: center; gap: 3px; }
++.player-label {
++    display: flex; align-items: center; gap: 6px;
++    background: rgba(0,0,0,0.5);
++    border: 1.5px solid transparent;
++    border-radius: 10px;
++    padding: 3px 10px;
++    font-size: 0.8rem; font-weight: 700;
++    transition: border-color .3s, box-shadow .3s;
++}
++.turn-badge {
++    background: #fbc531; color: #000;
++    font-size: 0.68rem; font-weight: 800;
++    padding: 1px 7px; border-radius: 8px;
++    animation: pulseBadge 0.9s ease-in-out infinite alternate;
++}
++.turn-badge.hidden { display: none; }
++@keyframes pulseBadge {
++    from { opacity: 0.8; transform: scale(0.97); }
++    to   { opacity: 1;   transform: scale(1.06); }
++}
++.player-area.active-turn .player-label {
++    border-color: #fbc531;
++    box-shadow: 0 0 14px #fbc531aa;
++}
++
++/* ===== HANDS ===== */
++.hand-h {
++    display: flex; flex-direction: row;
++    align-items: flex-end; justify-content: center;
++    padding: 0 8px;
++}
++.hand-v {
++    display: flex; flex-direction: column;
++    align-items: center; justify-content: center;
++}
++
++/* ===== CARD WRAPPER ===== */
++.card-wrapper {
++    position: relative;
++    display: inline-block;
++    cursor: pointer;
++    transition: none;
++}
++
++/* ===== CARD ===== */
++.card {
++    width: 72px; height: 108px;
++    background: #fff;
++    border-radius: 8px;
++    border: 1.5px solid #ccc;
++    box-shadow: 2px 4px 12px rgba(0,0,0,0.38);
++    display: flex; flex-direction: column;
++    justify-content: space-between;
++    padding: 5px 5px;
++    position: relative;
++    user-select: none;
++    transition: box-shadow .2s, border-color .2s;
++}
++.card.red  { color: #d00; }
++.card.black { color: #111; }
++
++/* Valid / Invalid card highlighting */
++.card.card-valid {
++    border-color: #4cd137;
++    box-shadow: 0 0 14px 3px rgba(76,209,55,0.6), 2px 4px 12px rgba(0,0,0,0.38);
++}
++.card.card-invalid {
++    opacity: 0.38;
++    filter: grayscale(55%);
++    cursor: not-allowed;
++}
++
++/* Shake animation for invalid plays */
++.card.shake {
++    animation: shakeCard 0.35s ease;
++}
++@keyframes shakeCard {
++    0%,100%{ transform: translateX(0); }
++    25%    { transform: translateX(-7px); }
++    75%    { transform: translateX(7px); }
++}
++
++/* Card corners */
++.card-tl { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
++.card-br { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; transform: rotate(180deg); }
++.card-tl .cr, .card-br .cr { font-size: 0.95rem; font-weight: 900; }
++.card-tl .cs, .card-br .cs { font-size: 0.8rem; font-weight: 700; margin-top: 1px; }
++
++/* Card center */
++.card-center {
++    position: absolute;
++    top: 50%; left: 50%;
++    transform: translate(-50%, -50%);
++    pointer-events: none;
++}
++.card-center.ace-big { font-size: 2rem; }
++.card-center.pip-center { font-size: 1.5rem; }
++.card-center.court {
++    display: flex; flex-direction: column; align-items: center;
++}
++.court-icon { font-size: 1.5rem; line-height: 1; }
++.court-sub  { font-size: 0.8rem; margin-top: 1px; }
++
++/* Face-down card */
++.card.face-down {
++    background: linear-gradient(135deg, #1a2e82 0%, #0b1a4f 100%);
++    border: 2px solid #f0c040;
++    cursor: default;
++}
++.card.face-down::after {
++    content: '';
++    position: absolute; inset: 5px;
++    border: 1px solid rgba(240,192,64,0.35);
++    border-radius: 4px;
++    background: repeating-linear-gradient(
++        45deg,
++        transparent, transparent 6px,
++        rgba(255,255,255,0.04) 6px, rgba(255,255,255,0.04) 7px
++    );
++}
++
++/* Trick slot played card */
++.trick-slot .card {
++    width: 72px; height: 108px;
++    animation: cardPop 0.22s cubic-bezier(.175,.885,.32,1.275);
++    cursor: default;
++}
++@keyframes cardPop {
++    from { opacity: 0; transform: scale(0.5) rotate(-5deg); }
++    to   { opacity: 1; transform: scale(1) rotate(0deg); }
++}
++
++/* ===== FOOTER ===== */
++#footer-area {
++    grid-area: footer;
++    display: flex;
++    justify-content: center;
++    align-items: center;
++    gap: 10px;
++    padding: 6px 16px;
++    background: rgba(0,0,0,0.35);
++}
++.btn {
++    font-family: var(--font-ui);
++    font-weight: 800; font-size: 0.9rem;
++    padding: 8px 20px;
++    border-radius: 20px; border: none;
++    cursor: pointer;
++    transition: transform .15s, box-shadow .15s, opacity .2s;
++}
++.btn:disabled { opacity: 0.4; cursor: not-allowed; }
++.btn-primary {
++    background: linear-gradient(135deg, #f9ca24 0%, #44bd32 100%);
++    color: #000;
++    box-shadow: 0 4px 14px rgba(68,189,50,0.4);
++}
++.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(68,189,50,0.5); }
++.btn-secondary {
++    background: rgba(255,255,255,0.12);
++    color: #fff;
++    border: 1px solid rgba(255,255,255,0.2);
++}
++.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
++
++/* ===== TRICK WIN OVERLAY (floating banner) ===== */
++#trick-win-overlay {
++    position: fixed;
++    top: 50%; left: 50%;
++    transform: translate(-50%, -50%) scale(0.8);
++    background: rgba(0,0,0,0.85);
++    border: 2px solid #fbc531;
++    border-radius: 16px;
++    padding: 12px 28px;
++    font-size: 1.2rem; font-weight: 800; color: #fbc531;
++    z-index: 600;
++    pointer-events: none;
++    opacity: 0;
++    transition: opacity 0.3s, transform 0.3s;
++    white-space: nowrap;
++}
++#trick-win-overlay.show {
++    opacity: 1;
++    transform: translate(-50%, -50%) scale(1);
++}
++#trick-win-overlay.hidden { display: none; }
++
++/* ===== ROUND OVERLAY ===== */
++#round-overlay {
++    position: fixed; inset: 0;
++    background: rgba(0,0,0,0.6);
++    backdrop-filter: blur(4px);
++    display: flex; align-items: center; justify-content: center;
++    z-index: 550;
++    animation: fadeIn 0.3s ease;
++}
++#round-overlay.hidden { display: none; }
++#round-overlay-box {
++    background: #1a252f;
++    border: 1px solid rgba(255,255,255,0.15);
++    border-radius: 20px;
++    padding: 28px 36px;
++    text-align: center;
++    animation: slideUp 0.3s ease;
++}
++#round-overlay-msg {
++    font-size: 1.3rem; font-weight: 800; color: #fbc531;
++}
++@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
++@keyframes slideUp {
++    from { opacity: 0; transform: translateY(20px); }
++    to   { opacity: 1; transform: translateY(0); }
++}
++
++/* ===== MATCH WIN OVERLAY ===== */
++#match-win-overlay {
++    position: fixed; inset: 0;
++    background: rgba(0,0,0,0.8);
++    backdrop-filter: blur(8px);
++    display: flex; flex-direction: column;
++    align-items: center; justify-content: center;
++    z-index: 700;
++    gap: 16px;
++}
++#match-win-overlay.hidden { display: none; }
++#match-win-box {
++    background: linear-gradient(135deg, #1a252f, #0d2918);
++    border: 2px solid #fbc531;
++    border-radius: 24px;
++    padding: 36px 48px;
++    text-align: center;
++    animation: slideUp 0.4s ease;
++}
++#match-winner-text { font-size: 1.8rem; font-weight: 800; color: #fbc531; margin-bottom: 8px; }
++#match-stats-text  { font-size: 1rem; color: #bbb; margin-bottom: 20px; }
++.match-win-actions { display: flex; gap: 12px; justify-content: center; }
++
++/* ===== LOG SIDEBAR ===== */
++#log-sidebar {
++    position: fixed;
++    right: 0; top: 0; bottom: 0;
++    width: 210px;
++    background: rgba(0,0,0,0.75);
++    backdrop-filter: blur(8px);
++    border-left: 1px solid rgba(255,255,255,0.12);
++    display: flex; flex-direction: column;
++    z-index: 200;
++    transition: transform 0.3s ease;
++}
++#log-sidebar.collapsed { transform: translateX(100%); }
++#log-sidebar-header {
++    display: flex; align-items: center; justify-content: space-between;
++    padding: 8px 10px;
++    background: rgba(255,255,255,0.05);
++    border-bottom: 1px solid rgba(255,255,255,0.1);
++    font-size: 0.75rem; font-weight: 800; color: #fbc531;
++    letter-spacing: 0.5px;
++}
++#log-close-btn {
++    background: none; border: none; color: #aaa;
++    cursor: pointer; font-size: 1rem; line-height: 1;
++}
++#log-close-btn:hover { color: #fff; }
++#game-log-list {
++    flex: 1; overflow-y: auto;
++    list-style: none;
++    padding: 6px;
++    display: flex; flex-direction: column; gap: 3px;
++    scrollbar-width: thin;
++    scrollbar-color: rgba(255,255,255,0.2) transparent;
++}
++.log-entry {
++    font-size: 0.7rem; padding: 3px 6px;
++    border-radius: 5px;
++    border-left: 2px solid transparent;
++    line-height: 1.4;
++}
++.log-time { color: #666; margin-right: 4px; }
++.log-play  { border-left-color: #4cd137; background: rgba(76,209,55,0.06); }
++.log-trick { border-left-color: #fbc531; background: rgba(251,197,49,0.06); color: #fbc531; }
++.log-trump { border-left-color: #9b59b6; background: rgba(155,89,182,0.08); color: #d7bff5; }
++.log-result { border-left-color: #e84118; background: rgba(232,65,24,0.08); color: #ff9980; font-weight: 700; }
++.log-round  { border-left-color: #00a8ff; background: rgba(0,168,255,0.08); color: #7fcfff; font-weight: 700; }
++.log-match  { border-left-color: #fbc531; background: rgba(251,197,49,0.15); color: #fbc531; font-weight: 800; }
++.log-info   { color: #888; }
++.log-pass   { color: #aaa; border-left-color: #666; }
++
++/* ===== TRUMP MODAL ===== */
++#modal-overlay {
++    position: fixed; inset: 0;
++    background: rgba(0,0,0,0.75);
++    backdrop-filter: blur(6px);
++    display: flex; align-items: center; justify-content: center;
++    z-index: 500;
++}
++#modal-overlay.hidden { display: none; }
++#modal-box {
++    background: #1a252f;
++    border: 1px solid rgba(255,255,255,0.15);
++    border-radius: 20px;
++    padding: 26px 30px;
++    max-width: 480px; width: 90%;
++    text-align: center;
++}
++#modal-box h2 { color: #fbc531; margin-bottom: 6px; font-size: 1.35rem; }
++#modal-box p  { color: #bbb; font-size: 0.88rem; margin-bottom: 14px; }
++#hand-preview {
++    display: flex; justify-content: center; align-items: flex-end;
++    min-height: 118px; margin-bottom: 16px;
++}
++#trump-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
++.suit-btn {
++    font-family: var(--font-ui);
++    font-size: 1.05rem; font-weight: 700;
++    padding: 11px 8px;
++    border-radius: 10px; border: 2px solid transparent;
++    background: #2c3e50; color: #fff;
++    cursor: pointer;
++    display: flex; align-items: center; justify-content: center; gap: 7px;
++    transition: all .2s;
++}
++.suit-btn:hover { background: #3d5166; border-color: #fbc531; transform: translateY(-2px); }
++.suit-btn.red-s .ss { color: #e84118; }
++.suit-btn.blk-s .ss { color: #ecf0f1; }
++
++/* ===== STATS MODAL ===== */
++#stats-modal {
++    position: fixed; inset: 0;
++    background: rgba(0,0,0,0.8);
++    backdrop-filter: blur(6px);
++    display: flex; align-items: center; justify-content: center;
++    z-index: 800;
++}
++#stats-modal.hidden { display: none; }
++#stats-box {
++    background: #1a252f;
++    border: 1px solid rgba(255,255,255,0.15);
++    border-radius: 20px;
++    padding: 26px 30px;
++    width: 500px; max-width: 95vw;
++}
++#stats-box h2 { color: #fbc531; margin-bottom: 16px; font-size: 1.25rem; text-align: center; }
++.stats-section { margin-bottom: 16px; }
++.stats-section h3 { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
++.stats-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
++.stats-table td { padding: 5px 8px; }
++.stats-table td:first-child { color: #ccc; width: 80px; }
++.stats-table td:nth-child(2) { color: #fff; font-weight: 700; width: 36px; text-align: center; }
++.stat-bar-bg { background: rgba(255,255,255,0.08); border-radius: 4px; height: 8px; overflow: hidden; }
++.stat-bar { height: 8px; border-radius: 4px; transition: width 0.8s ease; }
++.team-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
++.team-stat-box {
++    background: rgba(255,255,255,0.06);
++    border-radius: 10px; padding: 10px 14px;
++    font-size: 0.8rem;
++}
++.team-stat-box .team-name { font-size: 0.72rem; color: #888; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
++.team-stat-row { display: flex; justify-content: space-between; color: #ccc; padding: 2px 0; }
++.team-stat-row span { color: #fff; font-weight: 700; }
++.mvp-box {
++    background: rgba(251,197,49,0.1);
++    border: 1px solid rgba(251,197,49,0.3);
++    border-radius: 10px; padding: 8px 14px;
++    font-size: 0.85rem; text-align: center; color: #fbc531;
++}
++.stats-close-wrap { display: flex; justify-content: center; margin-top: 16px; }
++
++/* ===== ANIMATION UTILITIES ===== */
++.hidden { display: none !important; }
+diff --git a/styles/menu.css b/styles/menu.css
+new file mode 100644
+index 0000000..cbb2dbf
+--- /dev/null
++++ b/styles/menu.css
+@@ -0,0 +1,419 @@
++html,
++body {
++    min-height: 100%;
++}
++
++body.menu-page {
++    min-height: 100svh;
++    overflow: hidden;
++    background:
++        radial-gradient(circle at 50% 32%, rgba(255, 255, 255, 0.045), transparent 20%),
++        radial-gradient(circle at 50% 64%, rgba(255, 255, 255, 0.018), transparent 34%),
++        var(--menu-bg);
++}
++
++.menu-shell {
++    position: relative;
++    min-height: 100svh;
++    display: grid;
++    grid-template-rows: auto 1fr auto;
++    isolation: isolate;
++    overflow: hidden;
++}
++
++.menu-shell::before {
++    content: "";
++    position: absolute;
++    inset: -12%;
++    z-index: -2;
++    pointer-events: none;
++    background: radial-gradient(ellipse at center, transparent 34%, rgba(0, 0, 0, 0.42) 70%, #000 100%);
++}
++
++.menu-shell::after {
++    content: "";
++    position: absolute;
++    inset: 0;
++    z-index: -1;
++    pointer-events: none;
++    opacity: 0.28;
++    background-image:
++        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
++        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
++    background-size: 56px 56px;
++    mask-image: radial-gradient(circle at center, #000 0%, transparent 68%);
++}
++
++.menu-topbar {
++    min-height: 78px;
++    padding: 18px clamp(20px, 4vw, 64px);
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 20px;
++}
++
++.menu-brand {
++    display: inline-flex;
++    align-items: baseline;
++    gap: 11px;
++    text-decoration: none;
++}
++
++.menu-brand .brand-wordmark {
++    font-size: 1.7rem;
++    line-height: 1;
++    letter-spacing: -0.025em;
++}
++
++.menu-brand .brand-suits {
++    font-family: var(--font-card);
++    font-size: .82rem;
++    letter-spacing: .12em;
++    color: var(--menu-text-muted);
++}
++
++.menu-top-actions {
++    display: flex;
++    align-items: center;
++    gap: 8px;
++}
++
++.round-icon-button {
++    width: 42px;
++    height: 42px;
++    display: grid;
++    place-items: center;
++    border: 1px solid transparent;
++    border-radius: 50%;
++    background: transparent;
++    color: var(--menu-text-muted);
++    cursor: pointer;
++    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease, background var(--duration-fast) ease;
++}
++
++.round-icon-button:hover {
++    color: var(--menu-text);
++    border-color: var(--menu-line);
++    background: rgba(255,255,255,.025);
++}
++
++.round-icon-button svg {
++    width: 19px;
++    height: 19px;
++    fill: none;
++    stroke: currentColor;
++    stroke-width: 1.5;
++}
++
++.menu-main {
++    display: grid;
++    grid-template-columns: minmax(0, 1fr) minmax(320px, 480px) minmax(0, 1fr);
++    align-items: center;
++    min-height: 0;
++    padding: 20px clamp(20px, 5vw, 80px) 30px;
++}
++
++.menu-rail {
++    height: min(64vh, 570px);
++    position: relative;
++}
++
++.menu-rail::after {
++    content: "";
++    position: absolute;
++    top: 8%;
++    bottom: 8%;
++    width: 1px;
++    background: linear-gradient(transparent, var(--menu-line), transparent);
++}
++
++.menu-rail:first-child::after {
++    right: 18%;
++}
++
++.menu-rail:last-child::after {
++    left: 18%;
++}
++
++.menu-content {
++    width: 100%;
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    text-align: center;
++    animation: menu-enter 850ms var(--ease-cinematic) both;
++}
++
++.suit-crown {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    gap: 13px;
++    min-height: 58px;
++    margin-bottom: 10px;
++    font-family: var(--font-card);
++    font-size: clamp(1.9rem, 3vw, 2.65rem);
++    color: rgba(245,242,234,.90);
++    letter-spacing: .04em;
++}
++
++.suit-crown span:nth-child(2),
++.suit-crown span:nth-child(3) {
++    transform: translateY(-7px);
++}
++
++.menu-title {
++    margin: 0;
++    font-size: clamp(4.6rem, 8vw, 7.1rem);
++    line-height: .78;
++    letter-spacing: -.045em;
++}
++
++.menu-subtitle {
++    margin: 30px 0 42px;
++    font-family: var(--font-menu);
++    font-size: clamp(1.1rem, 1.7vw, 1.38rem);
++    font-style: italic;
++    color: var(--menu-text-muted);
++}
++
++.menu-actions {
++    width: min(100%, 330px);
++    display: grid;
++    gap: 11px;
++}
++
++.menu-action {
++    position: relative;
++    min-height: 58px;
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    justify-content: center;
++    gap: 3px;
++    padding: 10px 24px;
++    border: 1px solid var(--menu-line);
++    border-radius: var(--radius-sm);
++    background: rgba(255,255,255,.012);
++    color: var(--menu-text);
++    text-decoration: none;
++    cursor: pointer;
++    overflow: hidden;
++    isolation: isolate;
++    transition: transform var(--duration-normal) var(--ease-cinematic), border-color var(--duration-normal) ease, color var(--duration-normal) ease;
++}
++
++.menu-action::before {
++    content: "";
++    position: absolute;
++    inset: 0;
++    z-index: -1;
++    background: var(--menu-text);
++    transform: translateY(102%);
++    transition: transform 420ms var(--ease-cinematic);
++}
++
++.menu-action:hover,
++.menu-action:focus-visible {
++    transform: translateY(-2px);
++    border-color: var(--menu-text);
++    color: #060706;
++}
++
++.menu-action:hover::before,
++.menu-action:focus-visible::before {
++    transform: translateY(0);
++}
++
++.menu-action-primary {
++    min-height: 68px;
++    border-color: var(--menu-line-strong);
++    font-family: var(--font-menu);
++    font-size: 1.45rem;
++}
++
++.menu-action-secondary {
++    font-family: var(--font-menu);
++    font-size: 1.23rem;
++}
++
++.action-caption {
++    font-family: var(--font-ui);
++    font-size: .58rem;
++    line-height: 1.2;
++    letter-spacing: .16em;
++    text-transform: uppercase;
++    color: currentColor;
++    opacity: .58;
++}
++
++.tutorial-status {
++    display: inline-flex;
++    align-items: center;
++    gap: 6px;
++}
++
++.tutorial-status[data-complete="true"]::after {
++    content: "Completed";
++    padding: 2px 6px;
++    border: 1px solid currentColor;
++    border-radius: 99px;
++    font-family: var(--font-ui);
++    font-size: .48rem;
++    letter-spacing: .08em;
++    text-transform: uppercase;
++    opacity: .58;
++}
++
++.menu-footer {
++    min-height: 64px;
++    padding: 12px clamp(20px, 4vw, 64px) 20px;
++    display: flex;
++    align-items: flex-end;
++    justify-content: space-between;
++    gap: 18px;
++    color: rgba(245,242,234,.30);
++    font-size: .62rem;
++    letter-spacing: .12em;
++    text-transform: uppercase;
++}
++
++.menu-footer a {
++    text-decoration: none;
++    color: inherit;
++}
++
++.menu-footer a:hover {
++    color: var(--menu-text-muted);
++}
++
++.settings-backdrop[hidden] {
++    display: none;
++}
++
++.settings-backdrop {
++    position: fixed;
++    inset: 0;
++    z-index: 30;
++    display: grid;
++    place-items: center;
++    padding: 24px;
++    background: rgba(0,0,0,.82);
++    backdrop-filter: blur(12px);
++}
++
++.settings-panel {
++    width: min(100%, 440px);
++    padding: 30px;
++    border: 1px solid var(--menu-line);
++    border-radius: var(--radius-sm);
++    background: #050605;
++    box-shadow: 0 28px 100px rgba(0,0,0,.58);
++}
++
++.settings-header {
++    display: flex;
++    align-items: flex-start;
++    justify-content: space-between;
++    gap: 20px;
++    margin-bottom: 26px;
++}
++
++.settings-title {
++    margin: 0;
++    font-family: var(--font-menu);
++    font-size: 2.45rem;
++    font-weight: 400;
++    line-height: 1;
++}
++
++.settings-copy {
++    margin: 7px 0 0;
++    color: var(--menu-text-muted);
++    font-size: .75rem;
++    line-height: 1.6;
++}
++
++.settings-close {
++    width: 38px;
++    height: 38px;
++    border: 0;
++    background: transparent;
++    color: var(--menu-text-muted);
++    font-size: 1.7rem;
++    cursor: pointer;
++}
++
++.settings-grid {
++    display: grid;
++    gap: 18px;
++}
++
++.setting-field {
++    display: grid;
++    gap: 8px;
++}
++
++.setting-field label {
++    font-size: .68rem;
++    letter-spacing: .12em;
++    text-transform: uppercase;
++    color: var(--menu-text-muted);
++}
++
++.setting-field select {
++    width: 100%;
++    min-height: 46px;
++    padding: 0 12px;
++    border: 1px solid var(--menu-line);
++    border-radius: var(--radius-sm);
++    background: #080a09;
++    color: var(--menu-text);
++}
++
++.settings-note {
++    margin: 22px 0 0;
++    color: rgba(245,242,234,.42);
++    font-size: .67rem;
++    line-height: 1.65;
++}
++
++@keyframes menu-enter {
++    from { opacity: 0; transform: translateY(14px); filter: blur(7px); }
++    to { opacity: 1; transform: translateY(0); filter: blur(0); }
++}
++
++@media (max-width: 900px) {
++    .menu-main {
++        grid-template-columns: 1fr;
++    }
++
++    .menu-rail {
++        display: none;
++    }
++}
++
++@media (max-width: 560px) {
++    body.menu-page {
++        overflow: auto;
++    }
++
++    .menu-topbar {
++        min-height: 68px;
++        padding: 14px 18px;
++    }
++
++    .menu-main {
++        padding: 30px 20px;
++    }
++
++    .menu-subtitle {
++        margin-bottom: 34px;
++    }
++
++    .menu-footer {
++        min-height: 54px;
++        padding-inline: 18px;
++    }
++}
+diff --git a/styles/tokens.css b/styles/tokens.css
+new file mode 100644
+index 0000000..5a86538
+--- /dev/null
++++ b/styles/tokens.css
+@@ -0,0 +1,47 @@
++:root {
++    /* Typography */
++    --font-menu: "Cormorant Garamond", Georgia, "Times New Roman", serif;
++    --font-ui: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
++    --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
++    --font-card: Georgia, "Times New Roman", serif;
++
++    /* Welcome / menu palette */
++    --menu-bg: #030403;
++    --menu-surface: #080a09;
++    --menu-text: #f5f2ea;
++    --menu-text-muted: rgba(245, 242, 234, 0.68);
++    --menu-line: rgba(245, 242, 234, 0.20);
++    --menu-line-strong: rgba(245, 242, 234, 0.52);
++
++    /* Gameplay palette — introduced now, consumed progressively from Patch 9. */
++    --game-bg: #07120d;
++    --table-felt: #0b5b3a;
++    --accent-gold: #e8c46a;
++    --card-white: #f8f5ed;
++    --suit-red: #d94a4a;
++    --suit-black: #161918;
++
++    /* Shared spacing */
++    --space-1: 0.25rem;
++    --space-2: 0.5rem;
++    --space-3: 0.75rem;
++    --space-4: 1rem;
++    --space-5: 1.5rem;
++    --space-6: 2rem;
++    --space-7: 3rem;
++    --space-8: 4rem;
++
++    /* Shared radii / motion */
++    --radius-sm: 0.25rem;
++    --radius-md: 0.625rem;
++    --radius-lg: 1rem;
++    --ease-cinematic: cubic-bezier(0.19, 1, 0.22, 1);
++    --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
++    --duration-fast: 160ms;
++    --duration-normal: 300ms;
++    --duration-slow: 700ms;
++
++    /* Card sizing tokens for the current UI and Patch 10. */
++    --card-width: 72px;
++    --card-height: 108px;
++}
+diff --git a/styles/tutorial.css b/styles/tutorial.css
+new file mode 100644
+index 0000000..b64a4ef
+--- /dev/null
++++ b/styles/tutorial.css
+@@ -0,0 +1,503 @@
++html,
++body {
++    min-height: 100%;
++}
++
++body.tutorial-page {
++    min-height: 100svh;
++    overflow: hidden;
++    background:
++        radial-gradient(circle at 72% 35%, rgba(255,255,255,.035), transparent 24%),
++        var(--menu-bg);
++}
++
++.tutorial-shell {
++    min-height: 100svh;
++    display: grid;
++    grid-template-rows: auto minmax(0, 1fr) auto;
++}
++
++.tutorial-header {
++    min-height: 78px;
++    padding: 15px clamp(18px, 4vw, 60px);
++    display: grid;
++    grid-template-columns: 1fr auto 1fr;
++    align-items: center;
++    gap: 20px;
++    border-bottom: 1px solid rgba(255,255,255,.08);
++}
++
++.tutorial-brand {
++    justify-self: start;
++    font-family: var(--font-menu);
++    font-size: 1.5rem;
++    text-decoration: none;
++}
++
++.tutorial-progress-text {
++    font-family: var(--font-menu);
++    font-size: 1.05rem;
++    color: var(--menu-text-muted);
++}
++
++.tutorial-exit {
++    justify-self: end;
++    min-width: 88px;
++    height: 40px;
++    border: 1px solid var(--menu-line);
++    border-radius: var(--radius-sm);
++    background: transparent;
++    color: var(--menu-text-muted);
++    text-decoration: none;
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    font-size: .72rem;
++    letter-spacing: .08em;
++    text-transform: uppercase;
++    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
++}
++
++.tutorial-exit:hover {
++    color: var(--menu-text);
++    border-color: var(--menu-line-strong);
++}
++
++.tutorial-main {
++    min-height: 0;
++    overflow: auto;
++    display: grid;
++    place-items: center;
++    padding: clamp(26px, 5vh, 58px) clamp(18px, 4vw, 60px);
++}
++
++.tutorial-layout {
++    width: min(100%, 1040px);
++    display: grid;
++    grid-template-columns: minmax(280px, .9fr) minmax(360px, 1.1fr);
++    gap: clamp(40px, 7vw, 90px);
++    align-items: center;
++}
++
++.tutorial-copy {
++    max-width: 500px;
++    animation: tutorial-enter 430ms var(--ease-cinematic) both;
++}
++
++.tutorial-kicker {
++    margin-bottom: 11px;
++    font-size: .64rem;
++    letter-spacing: .18em;
++    text-transform: uppercase;
++    color: rgba(245,242,234,.42);
++}
++
++.tutorial-step-title {
++    margin: 0;
++    font-size: clamp(3.25rem, 5.8vw, 5.2rem);
++    line-height: .91;
++    letter-spacing: -.035em;
++}
++
++.tutorial-body-copy {
++    margin: 25px 0 0;
++    font-size: .9rem;
++    line-height: 1.85;
++    color: var(--menu-text-muted);
++}
++
++.tutorial-rules {
++    margin: 24px 0 0;
++    padding: 0;
++    list-style: none;
++    display: grid;
++    gap: 10px;
++}
++
++.tutorial-rules li {
++    position: relative;
++    padding-left: 20px;
++    font-family: var(--font-menu);
++    font-size: 1.2rem;
++    line-height: 1.25;
++    color: rgba(245,242,234,.88);
++}
++
++.tutorial-rules li::before {
++    content: "";
++    position: absolute;
++    left: 0;
++    top: .58em;
++    width: 5px;
++    height: 5px;
++    border-radius: 50%;
++    background: var(--menu-text-muted);
++}
++
++.tutorial-visual {
++    min-height: min(52vh, 480px);
++    position: relative;
++    display: grid;
++    place-items: center;
++    border: 1px solid rgba(255,255,255,.08);
++    border-radius: var(--radius-sm);
++    background:
++        radial-gradient(circle at 50% 46%, rgba(255,255,255,.045), transparent 44%),
++        rgba(255,255,255,.01);
++    overflow: hidden;
++    animation: tutorial-enter 520ms var(--ease-cinematic) both;
++}
++
++.visual-stage {
++    width: min(82%, 380px);
++    min-height: 300px;
++    display: grid;
++    place-items: center;
++}
++
++.visual-caption {
++    position: absolute;
++    left: 20px;
++    right: 20px;
++    bottom: 17px;
++    text-align: center;
++    font-size: .58rem;
++    line-height: 1.5;
++    letter-spacing: .14em;
++    text-transform: uppercase;
++    color: rgba(245,242,234,.38);
++}
++
++.tutorial-footer {
++    min-height: 90px;
++    padding: 16px clamp(18px, 4vw, 60px);
++    display: grid;
++    grid-template-columns: 1fr auto 1fr;
++    align-items: center;
++    gap: 20px;
++    border-top: 1px solid rgba(255,255,255,.08);
++}
++
++.tutorial-dots {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    gap: 8px;
++}
++
++.tutorial-dot {
++    width: 5px;
++    height: 5px;
++    border-radius: 50%;
++    background: rgba(255,255,255,.18);
++    transition: transform var(--duration-fast) ease, background var(--duration-fast) ease;
++}
++
++.tutorial-dot.done {
++    background: rgba(255,255,255,.48);
++}
++
++.tutorial-dot.active {
++    background: var(--menu-text);
++    transform: scale(1.5);
++}
++
++.tutorial-nav {
++    justify-self: end;
++    display: flex;
++    gap: 10px;
++}
++
++.tutorial-button {
++    min-width: 110px;
++    height: 46px;
++    border: 1px solid var(--menu-line);
++    border-radius: var(--radius-sm);
++    background: transparent;
++    color: var(--menu-text);
++    cursor: pointer;
++    font-family: var(--font-menu);
++    font-size: 1.15rem;
++}
++
++.tutorial-button:hover:not(:disabled) {
++    border-color: var(--menu-line-strong);
++    background: rgba(255,255,255,.035);
++}
++
++.tutorial-button:disabled {
++    opacity: .25;
++    cursor: default;
++}
++
++.tutorial-button.primary {
++    border-color: var(--menu-text);
++    background: var(--menu-text);
++    color: #050605;
++}
++
++.tutorial-shortcut {
++    justify-self: start;
++    font-size: .62rem;
++    color: rgba(245,242,234,.34);
++    letter-spacing: .08em;
++    text-transform: uppercase;
++}
++
++/* Visual primitives */
++.seat-map,
++.trick-map {
++    width: 285px;
++    height: 285px;
++    position: relative;
++    border: 1px solid rgba(255,255,255,.09);
++    border-radius: 50%;
++}
++
++.seat {
++    position: absolute;
++    min-width: 80px;
++    text-align: center;
++    font-family: var(--font-menu);
++    color: var(--menu-text-muted);
++}
++
++.seat::before {
++    content: "";
++    display: block;
++    width: 31px;
++    height: 31px;
++    margin: 0 auto 6px;
++    border: 1px solid var(--menu-line-strong);
++    border-radius: 50%;
++}
++
++.seat.n { top: 15px; left: 50%; transform: translateX(-50%); }
++.seat.s { bottom: 15px; left: 50%; transform: translateX(-50%); color: var(--menu-text); }
++.seat.w { left: -8px; top: 50%; transform: translateY(-50%); }
++.seat.e { right: -8px; top: 50%; transform: translateY(-50%); }
++
++.team-axis {
++    position: absolute;
++    background: rgba(255,255,255,.10);
++}
++
++.team-axis.vertical { width: 1px; height: 145px; left: 50%; top: 70px; }
++.team-axis.horizontal { height: 1px; width: 145px; left: 70px; top: 50%; }
++
++.tutorial-card-fan {
++    position: relative;
++    width: 250px;
++    height: 210px;
++}
++
++.tutorial-card-face {
++    position: absolute;
++    width: 92px;
++    height: 132px;
++    display: grid;
++    place-items: center;
++    border-radius: 7px;
++    border: 1px solid #d4d0c8;
++    background: var(--card-white);
++    color: var(--suit-black);
++    box-shadow: 0 18px 34px rgba(0,0,0,.28);
++    font-size: 2rem;
++}
++
++.tutorial-card-face.red { color: #b62835; }
++.tutorial-card-face:nth-child(1) { left: 17px; top: 42px; transform: rotate(-12deg); }
++.tutorial-card-face:nth-child(2) { left: 72px; top: 17px; transform: rotate(-4deg); }
++.tutorial-card-face:nth-child(3) { left: 126px; top: 18px; transform: rotate(5deg); }
++.tutorial-card-face:nth-child(4) { left: 170px; top: 47px; transform: rotate(13deg); }
++
++.rank-ladder {
++    display: flex;
++    align-items: flex-end;
++    gap: 7px;
++}
++
++.rank-tile {
++    width: 40px;
++    height: 58px;
++    display: grid;
++    place-items: center;
++    border: 1px solid var(--menu-line);
++    font-family: var(--font-card);
++    font-size: 1.35rem;
++}
++
++.rank-tile:last-child {
++    height: 76px;
++    border-color: var(--menu-line-strong);
++    background: rgba(255,255,255,.035);
++}
++
++.trump-demo {
++    display: grid;
++    justify-items: center;
++    gap: 28px;
++}
++
++.four-cards,
++.legal-hand {
++    display: flex;
++    gap: 8px;
++}
++
++.mini-card-ui {
++    width: 62px;
++    height: 90px;
++    display: grid;
++    place-items: center;
++    border-radius: 5px;
++    background: var(--card-white);
++    color: var(--suit-black);
++    font-family: var(--font-card);
++    font-size: 1.45rem;
++    box-shadow: 0 10px 22px rgba(0,0,0,.24);
++}
++
++.mini-card-ui.red { color: #b62835; }
++.mini-card-ui.invalid { opacity: .22; }
++.mini-card-ui.valid { outline: 2px solid rgba(255,255,255,.72); outline-offset: 3px; }
++
++.suit-options {
++    display: flex;
++    gap: 10px;
++}
++
++.suit-option {
++    width: 45px;
++    height: 45px;
++    display: grid;
++    place-items: center;
++    border: 1px solid var(--menu-line);
++    border-radius: 50%;
++    font-family: var(--font-card);
++    font-size: 1.45rem;
++}
++
++.suit-option.selected {
++    border-color: var(--menu-text);
++    box-shadow: 0 0 0 4px rgba(255,255,255,.06);
++}
++
++.lead-demo,
++.follow-demo,
++.target-demo,
++.ready-demo {
++    display: grid;
++    place-items: center;
++    gap: 24px;
++}
++
++.lead-caption {
++    color: var(--menu-text-muted);
++    font-size: .62rem;
++    letter-spacing: .13em;
++    text-transform: uppercase;
++}
++
++.trick-card-ui {
++    position: absolute;
++    width: 68px;
++    height: 98px;
++    display: grid;
++    place-items: center;
++    border-radius: 5px;
++    background: var(--card-white);
++    color: var(--suit-black);
++    font-family: var(--font-card);
++    font-size: 1.42rem;
++}
++
++.trick-card-ui.red { color: #b62835; }
++.trick-card-ui.n { top: 28px; left: 108px; }
++.trick-card-ui.s { bottom: 28px; left: 108px; }
++.trick-card-ui.w { left: 31px; top: 94px; }
++.trick-card-ui.e { right: 31px; top: 94px; }
++.trick-card-ui.winner { box-shadow: 0 0 0 3px rgba(255,255,255,.88), 0 0 28px rgba(255,255,255,.16); }
++
++.scoring-board {
++    width: min(100%, 320px);
++    border: 1px solid rgba(255,255,255,.11);
++}
++
++.scoring-row {
++    display: grid;
++    grid-template-columns: 1fr 66px;
++    gap: 14px;
++    align-items: center;
++    padding: 15px 17px;
++    border-bottom: 1px solid rgba(255,255,255,.08);
++}
++
++.scoring-row:last-child { border-bottom: 0; }
++.scoring-name { font-family: var(--font-menu); font-size: 1.16rem; }
++.scoring-sub { display: block; margin-top: 2px; font-family: var(--font-ui); font-size: .52rem; letter-spacing: .08em; text-transform: uppercase; color: var(--menu-text-muted); }
++.scoring-value { text-align: right; font-family: var(--font-display); font-size: 1.9rem; }
++
++.target-number {
++    font-family: var(--font-display);
++    font-size: 6.3rem;
++    line-height: .8;
++}
++
++.target-label {
++    font-size: .62rem;
++    letter-spacing: .18em;
++    text-transform: uppercase;
++    color: var(--menu-text-muted);
++}
++
++.ready-ring {
++    width: 175px;
++    height: 175px;
++    display: grid;
++    place-items: center;
++    border: 1px solid var(--menu-line);
++    border-radius: 50%;
++    font-family: var(--font-menu);
++    font-size: 4.5rem;
++}
++
++@keyframes tutorial-enter {
++    from { opacity: 0; transform: translateY(10px); filter: blur(5px); }
++    to { opacity: 1; transform: translateY(0); filter: blur(0); }
++}
++
++@media (max-width: 860px) {
++    body.tutorial-page { overflow: auto; }
++    .tutorial-shell { min-height: 100svh; }
++    .tutorial-main { overflow: visible; }
++    .tutorial-layout { grid-template-columns: 1fr; max-width: 650px; }
++    .tutorial-copy { max-width: none; }
++    .tutorial-visual { min-height: 350px; }
++}
++
++@media (max-width: 600px) {
++    .tutorial-header {
++        min-height: 66px;
++        grid-template-columns: 1fr auto;
++        padding: 12px 16px;
++    }
++
++    .tutorial-brand { display: none; }
++    .tutorial-progress-text { justify-self: start; }
++    .tutorial-main { padding: 25px 16px; }
++    .tutorial-step-title { font-size: clamp(2.9rem, 15vw, 4.25rem); }
++    .tutorial-visual { min-height: 330px; }
++    .tutorial-footer {
++        min-height: 108px;
++        grid-template-columns: 1fr;
++        gap: 11px;
++        padding: 13px 16px;
++    }
++    .tutorial-shortcut { display: none; }
++    .tutorial-dots { grid-row: 1; }
++    .tutorial-nav { justify-self: stretch; display: grid; grid-template-columns: 1fr 1fr; }
++    .tutorial-button { width: 100%; }
++    .seat-map, .trick-map { transform: scale(.86); }
++    .rank-ladder { gap: 4px; transform: scale(.9); }
++}
+diff --git a/styles/typography.css b/styles/typography.css
+new file mode 100644
+index 0000000..df39e23
+--- /dev/null
++++ b/styles/typography.css
+@@ -0,0 +1,20 @@
++.brand-wordmark,
++.menu-title,
++.tutorial-title,
++.tutorial-step-title {
++    font-family: var(--font-menu);
++    font-weight: 400;
++}
++
++.display-label,
++.score-label,
++.score-value,
++.t-label {
++    font-family: var(--font-display);
++}
++
++.card,
++.mini-card,
++.tutorial-card-face {
++    font-family: var(--font-card);
++}
+diff --git a/tests/tutorial.test.js b/tests/tutorial.test.js
+new file mode 100644
+index 0000000..3640972
+--- /dev/null
++++ b/tests/tutorial.test.js
+@@ -0,0 +1,50 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { TUTORIAL_STEPS } from '../src/ui/tutorialData.js';
++
++test('tutorial contains the planned eleven steps in stable order', () => {
++    assert.equal(TUTORIAL_STEPS.length, 11);
++    assert.deepEqual(
++        TUTORIAL_STEPS.map(step => step.id),
++        [
++            'teams',
++            'deck',
++            'ranking',
++            'trump',
++            'leading',
++            'follow-suit',
++            'trump-power',
++            'resolve-trick',
++            'scoring',
++            'tie-and-target',
++            'strategy',
++        ],
++    );
++});
++
++test('every tutorial step contains complete instructional content', () => {
++    for (const step of TUTORIAL_STEPS) {
++        assert.ok(step.kicker.length > 0, `${step.id} requires a kicker`);
++        assert.ok(step.title.length > 0, `${step.id} requires a title`);
++        assert.ok(step.body.length > 0, `${step.id} requires body copy`);
++        assert.ok(step.bullets.length > 0, `${step.id} requires at least one rule bullet`);
++        assert.ok(step.visual.length > 0, `${step.id} requires a visual key`);
++        assert.ok(step.caption.length > 0, `${step.id} requires a caption`);
++    }
++});
++
++test('tutorial standard-rule statements match Batch 1 engine baseline', () => {
++    const allText = TUTORIAL_STEPS
++        .flatMap(step => [step.title, step.body, ...step.bullets])
++        .join(' ');
++
++    assert.match(allText, /32 cards/i);
++    assert.match(allText, /No Joker/i);
++    assert.match(allText, /counter-clockwise/i);
++    assert.match(allText, /Passing is not available/i);
++    assert.match(allText, /5–7 tricks → 1 base token/);
++    assert.match(allText, /5–7 tricks → 2 base tokens/);
++    assert.match(allText, /8-trick Kapothi → 3 base tokens/);
++    assert.match(allText, /4–4/);
++    assert.match(allText, /10 tokens/i);
++});
+diff --git a/tests/ui-pages.test.js b/tests/ui-pages.test.js
+new file mode 100644
+index 0000000..5814d8f
+--- /dev/null
++++ b/tests/ui-pages.test.js
+@@ -0,0 +1,51 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync, existsSync } from 'node:fs';
++
++const read = path => readFileSync(path, 'utf8');
++
++test('Batch 3 application pages exist', () => {
++    for (const path of ['index.html', 'main-menu.html', 'tutorial.html', 'game.html']) {
++        assert.equal(existsSync(path), true, `${path} should exist`);
++    }
++});
++
++test('fallback index routes to main menu', () => {
++    const html = read('index.html');
++    assert.match(html, /url=main-menu\.html/);
++    assert.match(html, /href="main-menu\.html"/);
++});
++
++test('main menu routes Play Solo and Tutorial correctly', () => {
++    const html = read('main-menu.html');
++    assert.match(html, /id="play-solo-link"[^>]+href="game\.html"/);
++    assert.match(html, /id="tutorial-link"[^>]+href="tutorial\.html"/);
++    assert.match(html, /id="settings-menu-button"/);
++});
++
++test('game page uses extracted stylesheet and ES-module gameplay entry', () => {
++    const html = read('game.html');
++    assert.match(html, /href="style\.css"/);
++    assert.match(html, /type="module" src="script\.js"/);
++    assert.doesNotMatch(html, /<style>/);
++});
++
++test('shared design-system files are present', () => {
++    for (const path of [
++        'styles/tokens.css',
++        'styles/base.css',
++        'styles/typography.css',
++        'styles/menu.css',
++        'styles/tutorial.css',
++        'styles/game-legacy.css',
++    ]) {
++        assert.equal(existsSync(path), true, `${path} should exist`);
++    }
++
++    const tokens = read('styles/tokens.css');
++    assert.match(tokens, /--font-ui:/);
++    assert.match(tokens, /--font-display:/);
++    assert.match(tokens, /--font-card:/);
++    assert.match(tokens, /--table-felt:\s*#0b5b3a/i);
++    assert.match(tokens, /--accent-gold:\s*#e8c46a/i);
++});
+diff --git a/tutorial.html b/tutorial.html
+new file mode 100644
+index 0000000..6391c9e
+--- /dev/null
++++ b/tutorial.html
+@@ -0,0 +1,52 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <meta name="description" content="Learn standard Omi step by step before starting a single-player match.">
++    <title>Omi — Tutorial</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com">
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
++    <link rel="stylesheet" href="styles/tokens.css">
++    <link rel="stylesheet" href="styles/base.css">
++    <link rel="stylesheet" href="styles/typography.css">
++    <link rel="stylesheet" href="styles/tutorial.css">
++</head>
++<body class="tutorial-page">
++    <main class="tutorial-shell">
++        <header class="tutorial-header">
++            <a class="tutorial-brand" href="main-menu.html">Omi</a>
++            <div class="tutorial-progress-text" id="tutorial-progress" aria-live="polite">Step 1 of 11</div>
++            <a class="tutorial-exit" href="main-menu.html">Exit</a>
++        </header>
++
++        <section class="tutorial-main">
++            <div class="tutorial-layout">
++                <article class="tutorial-copy" id="tutorial-copy">
++                    <div class="tutorial-kicker" id="tutorial-kicker"></div>
++                    <h1 class="tutorial-step-title" id="tutorial-title"></h1>
++                    <p class="tutorial-body-copy" id="tutorial-body"></p>
++                    <ul class="tutorial-rules" id="tutorial-rules"></ul>
++                </article>
++
++                <div class="tutorial-visual" id="tutorial-visual" aria-live="polite">
++                    <div class="visual-stage" id="visual-stage"></div>
++                    <div class="visual-caption" id="visual-caption"></div>
++                </div>
++            </div>
++        </section>
++
++        <footer class="tutorial-footer">
++            <div class="tutorial-shortcut">← / → Navigate · Esc Exit</div>
++            <div class="tutorial-dots" id="tutorial-dots" aria-hidden="true"></div>
++            <div class="tutorial-nav">
++                <button class="tutorial-button" id="tutorial-back" type="button">Back</button>
++                <button class="tutorial-button primary" id="tutorial-next" type="button">Next</button>
++            </div>
++        </footer>
++    </main>
++
++    <script type="module" src="src/ui/tutorial.js"></script>
++</body>
++</html>

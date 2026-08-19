@@ -1,1 +1,8 @@
-/* style.css is intentionally empty – all styles are embedded in index.html */
+/* Gameplay stylesheet entry point.
+ * Batch 3 introduces shared design tokens and typography while preserving the
+ * existing table layout. The full responsive table redesign begins in Patch 9.
+ */
+@import url('./styles/tokens.css');
+@import url('./styles/base.css');
+@import url('./styles/typography.css');
+@import url('./styles/game-legacy.css');
