@@ -26,7 +26,8 @@ test('modal focus trap is shared by game and main menu', () => {
     assert.match(read('src/ui/main-menu.js'), /activateFocusTrap/);
 });
 
-test('motion preference is applied to main menu, tutorial and gameplay', () => {
+test('motion preference is applied to welcome, main menu, tutorial and gameplay', () => {
+    assert.match(read('src/ui/welcome.js'), /configureMotion\(loadSettings\(\)\)/);
     assert.match(read('src/ui/main-menu.js'), /configureMotion\(preferences\)/);
     assert.match(read('src/ui/tutorial.js'), /configureMotion\(loadSettings\(\)\)/);
     assert.match(read('script.js'), /configureMotion\(settings\)/);

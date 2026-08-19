@@ -68,6 +68,7 @@ function validateLiteralIds(scriptPath, page) {
 }
 
 validateLiteralIds('script.js', 'game.html');
+validateLiteralIds('src/ui/welcome.js', 'index.html');
 validateLiteralIds('src/ui/main-menu.js', 'main-menu.html');
 validateLiteralIds('src/ui/tutorial.js', 'tutorial.html');
 

@@ -10,10 +10,13 @@ test('Batch 3 application pages exist', () => {
     }
 });
 
-test('fallback index routes to main menu', () => {
+test('index provides the cinematic Welcome page and routes Tap to Start to main menu', () => {
     const html = read('index.html');
-    assert.match(html, /url=main-menu\.html/);
-    assert.match(html, /href="main-menu\.html"/);
+    assert.match(html, /id="welcome-video"/);
+    assert.match(html, /assets\/video\/omi-intro\.mp4/);
+    assert.match(html, /id="welcome-title">Omi<\/h1>/);
+    assert.match(html, /id="welcome-start" href="main-menu\.html"/);
+    assert.doesNotMatch(html, /http-equiv="refresh"/);
 });
 
 test('main menu routes Play Solo and Tutorial correctly', () => {

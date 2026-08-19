@@ -1,0 +1,363 @@
+html,
+body {
+    min-height: 100%;
+}
+
+body.welcome-page {
+    min-height: 100svh;
+    overflow: hidden;
+    background: #000;
+    color: var(--menu-text);
+}
+
+.welcome-stage {
+    position: relative;
+    min-height: 100svh;
+    overflow: hidden;
+    isolation: isolate;
+    background: #000;
+}
+
+.welcome-media,
+.welcome-poster,
+.welcome-video,
+.welcome-shade {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.welcome-media {
+    z-index: 0;
+    overflow: hidden;
+    background: #000;
+}
+
+.welcome-poster {
+    background: #000 url("../assets/video/omi-intro-poster.jpg") center center / cover no-repeat;
+    transform: scale(1.001);
+}
+
+.welcome-video {
+    z-index: 1;
+    display: block;
+    object-fit: cover;
+    object-position: center center;
+    background: #000;
+    opacity: 1;
+    transition: opacity 220ms ease;
+}
+
+.welcome-shade {
+    z-index: 2;
+    pointer-events: none;
+    background:
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0.02) 42%, rgba(0, 0, 0, 0.28) 72%, rgba(0, 0, 0, 0.62) 100%),
+        radial-gradient(circle at 50% 48%, transparent 24%, rgba(0, 0, 0, 0.08) 64%, rgba(0, 0, 0, 0.30) 100%);
+}
+
+.welcome-stage.is-settled .welcome-video {
+    opacity: 0;
+}
+
+.welcome-skip {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+}
+
+.welcome-skip[hidden] {
+    display: none;
+}
+
+.welcome-skip:focus-visible {
+    outline: 2px solid rgba(245, 242, 234, 0.78);
+    outline-offset: -8px;
+}
+
+.welcome-skip-hint {
+    position: absolute;
+    z-index: 5;
+    left: 50%;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    margin: 0;
+    transform: translateX(-50%);
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgba(245, 242, 234, 0.42);
+    opacity: 0;
+    animation: welcome-skip-hint 900ms ease 1300ms forwards;
+    pointer-events: none;
+}
+
+.welcome-stage.is-ready .welcome-skip-hint,
+.welcome-stage.is-leaving .welcome-skip-hint {
+    display: none;
+}
+
+.welcome-content {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding:
+        32px
+        max(24px, env(safe-area-inset-right))
+        max(38px, calc(5svh + env(safe-area-inset-bottom)))
+        max(24px, env(safe-area-inset-left));
+    text-align: center;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.welcome-stage.is-ready .welcome-content {
+    visibility: visible;
+}
+
+.welcome-title {
+    margin: 0;
+    font-family: var(--font-menu);
+    font-size: clamp(4.8rem, 9.4vw, 7.8rem);
+    font-weight: 400;
+    line-height: 0.78;
+    letter-spacing: -0.045em;
+    text-shadow: 0 5px 36px rgba(0, 0, 0, 0.60);
+    opacity: 0;
+    transform: translateY(18px);
+}
+
+.welcome-subtitle {
+    margin: clamp(22px, 3vh, 30px) 0 0;
+    font-family: var(--font-menu);
+    font-size: clamp(1.05rem, 2vw, 1.38rem);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--menu-text-muted);
+    text-shadow: 0 3px 24px rgba(0, 0, 0, 0.65);
+    opacity: 0;
+    transform: translateY(12px);
+}
+
+.welcome-start {
+    position: relative;
+    min-width: min(78vw, 280px);
+    min-height: 56px;
+    display: inline-grid;
+    place-items: center;
+    margin-top: clamp(24px, 4vh, 38px);
+    padding: 12px 34px;
+    border: 1px solid rgba(245, 242, 234, 0.54);
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--menu-text);
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    text-decoration: none;
+    overflow: hidden;
+    isolation: isolate;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: auto;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    transition:
+        color 320ms var(--ease-cinematic),
+        border-color 320ms ease,
+        transform 320ms var(--ease-cinematic),
+        background 320ms ease,
+        box-shadow 320ms ease;
+}
+
+.welcome-start::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--menu-text);
+    transform: translateY(102%);
+    transition: transform 430ms var(--ease-cinematic);
+}
+
+.welcome-start:hover,
+.welcome-start:focus-visible {
+    color: #050605;
+    border-color: var(--menu-text);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 36px rgba(245, 242, 234, 0.10);
+}
+
+.welcome-start:hover::before,
+.welcome-start:focus-visible::before {
+    transform: translateY(0);
+}
+
+.welcome-start:active {
+    transform: translateY(0) scale(0.988);
+}
+
+.welcome-stage.is-ready .welcome-title {
+    animation: welcome-copy-in 760ms var(--ease-cinematic) both;
+}
+
+.welcome-stage.is-ready .welcome-subtitle {
+    animation: welcome-copy-in 700ms var(--ease-cinematic) 130ms both;
+}
+
+.welcome-stage.is-ready .welcome-start {
+    animation:
+        welcome-copy-in 700ms var(--ease-cinematic) 310ms both,
+        welcome-button-breathe 2800ms ease-in-out 1500ms infinite;
+}
+
+.welcome-stage.is-leaving .welcome-content {
+    animation: welcome-content-out 430ms ease both;
+}
+
+.welcome-stage.is-leaving .welcome-media {
+    animation: welcome-media-out 620ms ease both;
+}
+
+.welcome-stage.is-leaving::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: #000;
+    pointer-events: none;
+    animation: welcome-blackout 620ms ease both;
+}
+
+@keyframes welcome-copy-in {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+        filter: blur(3px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+
+@keyframes welcome-button-breathe {
+    0%, 100% { box-shadow: 0 0 0 rgba(245, 242, 234, 0); }
+    50% { box-shadow: 0 0 30px rgba(245, 242, 234, 0.08); }
+}
+
+@keyframes welcome-skip-hint {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes welcome-content-out {
+    to {
+        opacity: 0;
+        transform: translateY(-8px);
+        filter: blur(4px);
+    }
+}
+
+@keyframes welcome-media-out {
+    to {
+        transform: scale(1.018);
+        filter: brightness(1.16) blur(1px);
+    }
+}
+
+@keyframes welcome-blackout {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (orientation: portrait) {
+    .welcome-poster {
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+
+    .welcome-video {
+        object-fit: contain;
+    }
+
+    .welcome-content {
+        padding-bottom: max(34px, calc(5svh + env(safe-area-inset-bottom)));
+    }
+
+    .welcome-title {
+        font-size: clamp(4.4rem, 18vw, 6.6rem);
+    }
+}
+
+@media (max-height: 620px) {
+    .welcome-content {
+        padding-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+
+    .welcome-title {
+        font-size: clamp(3.6rem, 11vh, 5rem);
+    }
+
+    .welcome-subtitle {
+        margin-top: 16px;
+        font-size: 1rem;
+    }
+
+    .welcome-start {
+        min-height: 50px;
+        margin-top: 18px;
+    }
+}
+
+html[data-motion="reduced"] .welcome-video,
+html[data-motion="reduced"] .welcome-skip,
+html[data-motion="reduced"] .welcome-skip-hint {
+    display: none;
+}
+
+html[data-motion="reduced"] .welcome-title,
+html[data-motion="reduced"] .welcome-subtitle,
+html[data-motion="reduced"] .welcome-start {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+
+html[data-motion="reduced"] .welcome-stage.is-leaving .welcome-content,
+html[data-motion="reduced"] .welcome-stage.is-leaving .welcome-media,
+html[data-motion="reduced"] .welcome-stage.is-leaving::after {
+    animation-duration: 0.01ms !important;
+}
+
+@media (forced-colors: active) {
+    .welcome-start {
+        border: 1px solid ButtonText;
+        background: Canvas;
+        color: ButtonText;
+        backdrop-filter: none;
+    }
+
+    .welcome-start::before {
+        display: none;
+    }
+}

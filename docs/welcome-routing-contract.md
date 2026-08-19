@@ -1,38 +1,44 @@
 # Welcome Page Integration Contract
 
-The Welcome page is owned and maintained separately by the user.
+The repository now contains the production Welcome/Home page at `index.html` using the user-supplied cinematic intro video.
 
-Batch 3 does **not** redesign, replace, or recreate the approved Welcome-page logo or its cinematic logo-building animation.
-
-## Target route
-
-The application routing contract is now:
+## Route
 
 ```text
-welcome.html
-    ↓ Tap to Start
+index.html
+    ↓ Intro video / Tap to Start
 main-menu.html
     ↓ Play Solo
 game.html
 ```
 
-## Current repository fallback
+The Welcome page remains presentation-only. It contains no Omi rules, AI or game-state logic.
 
-The repository does not contain the user's final Welcome page asset. Therefore `index.html` is a deliberately neutral compatibility redirect to `main-menu.html`.
+## Intro media
 
-When the user adds the final Welcome page, it can either:
+The approved supplied media is stored as:
 
-1. be saved as `welcome.html` and linked from the hosting entry point; or
-2. replace the neutral `index.html` redirect.
+```text
+assets/video/omi-intro.mp4
+assets/video/omi-intro-poster.jpg
+```
 
-In both cases, **Tap to Start must navigate to `main-menu.html`**.
+The poster is an exact late frame extracted from the supplied video so the final intertwined Omi suit emblem is preserved rather than recreated or approximated.
+
+## Welcome behaviour
+
+1. The muted, inline 8-second intro attempts to autoplay.
+2. The `Omi` title, subtitle and `Tap to Start` control reveal near the final emblem formation.
+3. When the video ends, the video layer settles onto the extracted final-frame poster.
+4. Tapping/clicking anywhere during the intro skips directly to the final Welcome state; it does **not** bypass the `Tap to Start` decision.
+5. `Tap to Start` performs a short cinematic fade and navigates to `main-menu.html`.
+6. If autoplay fails, the static final state is shown immediately.
+7. Reduced-motion preference skips video playback and shows the static final state immediately.
+
+## Audio
+
+The Welcome video is intentionally muted for reliable browser autoplay. Gameplay sound remains controlled by the existing persistent Omi sound setting.
 
 ## Logo integrity
 
-The approved primary Omi logo must not be recreated, approximated, or geometrically modified by application code. The Batch 3 Main Menu uses only a typographic `Omi` wordmark and normal card-suit symbols because the approved logo asset is not present in the attached codebase.
-
-When the official logo asset is added later, it should be referenced directly as an image/SVG asset and remain unchanged.
-
-## Separation of responsibilities
-
-The Welcome page must contain no Omi game-rule logic. Main Menu navigation, Tutorial navigation, and gameplay remain separate application concerns.
+No generated or reconstructed logo is placed over the video. The emblem visible in the final Welcome state comes directly from the supplied intro footage/poster frame.

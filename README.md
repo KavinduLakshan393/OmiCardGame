@@ -15,6 +15,7 @@ This repository contains the completed **Single Player v1** scope from implement
 - pure authoritative `GameEngine` with action/event contracts and serializable sessions;
 - one human player plus three fair-information AI players;
 - Casual and Smart AI difficulties;
+- cinematic Welcome/Home page using the supplied intro video;
 - Main Menu and complete 11-step Tutorial;
 - responsive premium game table and production card renderer;
 - presentation-only deal, play and trick-collection animations;
@@ -30,15 +31,15 @@ Joker, pass-trump and other house-rule variations remain intentionally excluded 
 ## Application routes
 
 ```text
-user-owned welcome.html
-        ↓
+index.html                       Cinematic Welcome/Home page
+        ↓ Tap to Start
 main-menu.html
    ├── tutorial.html
    ├── game.html
    └── game.html?resume=1   (only when a valid active save exists)
 ```
 
-The repository currently keeps `index.html` as a neutral compatibility entry that redirects to `main-menu.html`. The final cinematic Welcome page is maintained separately by the user and only needs to preserve the `main-menu.html` routing contract. See `docs/welcome-routing-contract.md`.
+The Welcome page uses the supplied intro video, then settles onto an exact extracted final-frame poster before routing to `main-menu.html`. See `docs/welcome-routing-contract.md`.
 
 ## Architecture
 
@@ -57,7 +58,7 @@ The authoritative engine remains independent from DOM, CSS, Web Audio, browser s
 ## Project structure
 
 ```text
-index.html                       Neutral fallback entry → Main Menu
+index.html                       Cinematic Welcome/Home entry → Main Menu
 main-menu.html                   Navigation, Continue Match and Settings
 tutorial.html                    11-step Standard Omi tutorial
 game.html                        Single-player game table
@@ -69,7 +70,7 @@ src/controllers/                 Single-player orchestration
 src/ai/                          Fair-information AI strategies
 src/audio/                       Browser presentation audio
 src/storage/                     Settings and active-match persistence
-src/ui/                          Rendering, motion, focus, hints and result helpers
+src/ui/                          Welcome, rendering, motion, focus, hints and result helpers
 scripts/check.mjs                JavaScript syntax verification
 scripts/qa.mjs                   Static release/architecture QA
 tests/                           Node automated regression suite

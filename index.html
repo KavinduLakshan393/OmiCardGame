@@ -2,12 +2,70 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=main-menu.html">
-    <title>Omi</title>
-    <meta name="robots" content="noindex">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="Omi — a Sri Lankan card game.">
+    <title>Omi — A Sri Lankan Card Game</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Manrope:wght@500;600&display=swap" rel="stylesheet">
+
+    <link rel="preload" href="assets/video/omi-intro-poster.jpg" as="image">
+    <link rel="stylesheet" href="styles/tokens.css">
+    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/typography.css">
+    <link rel="stylesheet" href="styles/welcome.css">
 </head>
-<body>
-    <p>Opening <a href="main-menu.html">Omi Main Menu</a>…</p>
+<body class="welcome-page">
+    <main class="welcome-stage" id="welcome-stage" aria-labelledby="welcome-title">
+        <div class="welcome-media" aria-hidden="true">
+            <div class="welcome-poster"></div>
+            <video
+                id="welcome-video"
+                class="welcome-video"
+                autoplay
+                muted
+                playsinline
+                preload="auto"
+                poster="assets/video/omi-intro-poster.jpg"
+                disablepictureinpicture
+            >
+                <source src="assets/video/omi-intro.mp4" type="video/mp4">
+            </video>
+            <div class="welcome-shade"></div>
+        </div>
+
+        <button
+            class="welcome-skip"
+            id="welcome-skip"
+            type="button"
+            aria-label="Skip intro animation"
+        ></button>
+
+        <section class="welcome-content" id="welcome-content" aria-live="polite">
+            <h1 class="welcome-title" id="welcome-title">Omi</h1>
+            <p class="welcome-subtitle">A Sri Lankan card game</p>
+            <a class="welcome-start" id="welcome-start" href="main-menu.html">
+                <span>Tap to Start</span>
+            </a>
+        </section>
+
+        <p class="welcome-skip-hint" id="welcome-skip-hint" aria-hidden="true">Tap anywhere to skip intro</p>
+    </main>
+
+    <noscript>
+        <style>
+            .welcome-video,
+            .welcome-skip,
+            .welcome-skip-hint { display: none !important; }
+            .welcome-content { opacity: 1 !important; visibility: visible !important; }
+            .welcome-title,
+            .welcome-subtitle,
+            .welcome-start { opacity: 1 !important; transform: none !important; }
+        </style>
+    </noscript>
+
+    <script type="module" src="src/ui/welcome.js"></script>
 </body>
 </html>
