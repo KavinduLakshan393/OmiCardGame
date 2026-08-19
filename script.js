@@ -458,6 +458,11 @@ async function handleDealBatchAnimation({ event }) {
     const container = document.getElementById(['p0-hand', 'p1-hand', 'p2-hand', 'p3-hand'][event.playerIndex]);
     markDealtCards(container, event.cards.length, event.playerIndex);
     await delay(460);
+
+    // DEAL_COMPLETED is emitted before this presentation hook finishes.
+    // Release the temporary dealing guard once authoritative state has
+    // advanced, otherwise the human card buttons remain disabled.
+    runtime.dealing = [PHASE.DEAL_INITIAL, PHASE.DEAL_REMAINING].includes(state.phase);
 }
 
 async function handleHumanTrumpRequired() {
@@ -483,7 +488,10 @@ async function handleBeforeAITurn({ playerId }) {
 }
 
 async function handleHumanTurn() {
+    // A human-turn hook can only occur after dealing has finished. Clear
+    // both UI guards before enabling the legal native card buttons.
     runtime.processing = false;
+    runtime.dealing = false;
     updateTurnBadges();
     setStatus('YOUR TURN! Click a card to play.');
     highlightValidCards();
