@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Omi single-player main menu.">
+    <title>Omi — Main Menu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/tokens.css">
+    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/typography.css">
+    <link rel="stylesheet" href="styles/menu.css">
+</head>
+<body class="menu-page">
+    <main class="menu-shell">
+        <header class="menu-topbar">
+            <a class="menu-brand" href="main-menu.html" aria-label="Omi main menu">
+                <span class="brand-wordmark">Omi</span>
+                <span class="brand-suits" aria-hidden="true">♠ ♥ ♦ ♣</span>
+            </a>
+
+            <div class="menu-top-actions">
+                <button class="round-icon-button" id="settings-button" type="button" aria-label="Open settings">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3.1"></circle>
+                        <path d="M19 13.5v-3l-2.2-.6a7.1 7.1 0 0 0-.8-1.8l1.1-2-2.1-2.1-2 1.1a7.1 7.1 0 0 0-1.8-.8L10.5 2h-3l-.6 2.2a7.1 7.1 0 0 0-1.8.8l-2-1.1L1 6l1.1 2a7.1 7.1 0 0 0-.8 1.8L-1 10.5v3l2.2.6a7.1 7.1 0 0 0 .8 1.8l-1.1 2L3 20l2-1.1a7.1 7.1 0 0 0 1.8.8l.6 2.3h3l.6-2.2a7.1 7.1 0 0 0 1.8-.8l2 1.1 2.1-2.1-1.1-2a7.1 7.1 0 0 0 .8-1.8z" transform="translate(3 0)"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <section class="menu-main" aria-labelledby="main-menu-title">
+            <div class="menu-rail" aria-hidden="true"></div>
+
+            <div class="menu-content">
+                <!-- The approved primary logo is intentionally not recreated here.
+                     Add the official asset later without altering its geometry. -->
+                <div class="suit-crown" aria-hidden="true">
+                    <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
+                </div>
+                <h1 class="menu-title" id="main-menu-title">Omi</h1>
+                <p class="menu-subtitle">A Sri Lankan card game</p>
+
+                <nav class="menu-actions" aria-label="Main menu">
+                    <a class="menu-action menu-action-primary continue-action" id="continue-match-link" href="game.html?resume=1" hidden>
+                        <span>Continue Match</span>
+                        <span class="action-caption" id="continue-match-caption">Resume saved game</span>
+                    </a>
+
+                    <a class="menu-action menu-action-primary" id="play-solo-link" href="game.html">
+                        <span>Play Solo</span>
+                        <span class="action-caption">Single Player</span>
+                    </a>
+
+                    <a class="menu-action menu-action-secondary tutorial-status" id="tutorial-link" href="tutorial.html" data-complete="false">
+                        <span>Tutorial</span>
+                        <span class="action-caption">Learn Omi step by step</span>
+                    </a>
+
+                    <button class="menu-action menu-action-secondary" id="settings-menu-button" type="button">
+                        <span>Settings</span>
+                        <span class="action-caption">Game preferences</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="menu-rail" aria-hidden="true"></div>
+        </section>
+
+        <footer class="menu-footer">
+            <span>Single Player v1</span>
+            <span>Standard Omi · 10 Token Match</span>
+        </footer>
+    </main>
+
+    <div class="settings-backdrop" id="settings-backdrop" hidden>
+        <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <div class="settings-header">
+                <div>
+                    <h2 class="settings-title" id="settings-title">Settings</h2>
+                    <p class="settings-copy">Preferences apply across the single-player experience.</p>
+                </div>
+                <button class="settings-close" id="settings-close" type="button" aria-label="Close settings">×</button>
+            </div>
+
+            <div class="settings-grid">
+                <div class="setting-field">
+                    <label for="difficulty-setting">AI difficulty</label>
+                    <select id="difficulty-setting">
+                        <option value="smart">Smart</option>
+                        <option value="casual">Casual</option>
+                    </select>
+                </div>
+
+                <div class="setting-field">
+                    <label for="sound-setting">Sound</label>
+                    <select id="sound-setting">
+                        <option value="on">On</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div class="setting-field">
+                    <label for="animation-speed-setting">Animation speed</label>
+                    <select id="animation-speed-setting">
+                        <option value="relaxed">Relaxed</option>
+                        <option value="normal">Normal</option>
+                        <option value="fast">Fast</option>
+                    </select>
+                </div>
+
+                <div class="setting-field">
+                    <label for="reduced-motion-setting">Motion</label>
+                    <select id="reduced-motion-setting">
+                        <option value="system">Use device setting</option>
+                        <option value="reduce">Reduce motion</option>
+                        <option value="full">Full motion</option>
+                    </select>
+                </div>
+            </div>
+
+            <p class="settings-note">Preferences are saved automatically and apply to new and resumed solo matches.</p>
+        </section>
+    </div>
+
+    <script type="module" src="src/ui/main-menu.js"></script>
+</body>
+</html>

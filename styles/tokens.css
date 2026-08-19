@@ -1,0 +1,55 @@
+:root {
+    /* Typography */
+    --font-menu: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --font-ui: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --font-card: Georgia, "Times New Roman", serif;
+
+    /* Welcome / menu palette */
+    --menu-bg: #030403;
+    --menu-surface: #080a09;
+    --menu-text: #f5f2ea;
+    --menu-text-muted: rgba(245, 242, 234, 0.68);
+    --menu-line: rgba(245, 242, 234, 0.20);
+    --menu-line-strong: rgba(245, 242, 234, 0.52);
+
+    /* Gameplay palette — introduced now, consumed progressively from Patch 9. */
+    --game-bg: #07120d;
+    --table-felt: #0b5b3a;
+    --accent-gold: #e8c46a;
+    --card-white: #f8f5ed;
+    --suit-red: #d94a4a;
+    --suit-black: #161918;
+
+    /* Shared spacing */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4rem;
+
+    /* Shared radii / motion */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.625rem;
+    --radius-lg: 1rem;
+    --ease-cinematic: cubic-bezier(0.19, 1, 0.22, 1);
+    --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --duration-fast: 160ms;
+    --duration-normal: 300ms;
+    --duration-slow: 700ms;
+
+    /* Card sizing tokens for the current UI and Patch 10. */
+    --card-width: 72px;
+    --card-height: 108px;
+}
+
+:root {
+    /* Batch 4 semantic aliases used by the gameplay surface. */
+    --font-brand: var(--font-menu);
+    --color-text-primary: var(--card-white);
+    --ease-cine: var(--ease-cinematic);
+    --motion-medium: 420ms;
+}

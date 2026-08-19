@@ -1,1 +1,10 @@
-/* style.css is intentionally empty – all styles are embedded in index.html */
+@import url('./styles/tokens.css');
+@import url('./styles/base.css');
+@import url('./styles/typography.css');
+@import url('./styles/table.css');
+@import url('./styles/cards.css');
+@import url('./styles/animations.css');
+@import url('./styles/results.css');
+@import url('./styles/accessibility.css');
+
+.hidden { display: none !important; }
