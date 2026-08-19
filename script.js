@@ -8,21 +8,41 @@
    ============================================================ */
 
 import {
+    EVENT,
     GameEngine,
     OmiRuleError,
     PHASE,
     PLAYER_NAMES,
-    RANKS,
-    cardStrength,
     isRed,
     rankValue,
-    resolveTrick as resolveTrickState,
     suitSymbol,
     teamOf,
 } from './src/engine/index.js';
+import { AI_DIFFICULTY } from './src/ai/AIPlayer.js';
+import { SinglePlayerController } from './src/controllers/SinglePlayerController.js';
 
-const game = new GameEngine();
-const state = game.state;
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const controller = new SinglePlayerController({
+    engine: new GameEngine(),
+    humanPlayerId: 0,
+    difficulty: AI_DIFFICULTY.SMART,
+    hooks: {
+        onEvents: handleEngineEvents,
+        afterDealBatch: handleDealBatchAnimation,
+        onHumanTrumpRequired: handleHumanTrumpRequired,
+        beforeAITrump: handleBeforeAITrump,
+        beforeAITurn: handleBeforeAITurn,
+        onHumanTurn: handleHumanTurn,
+        beforeTrickComplete: handleBeforeTrickComplete,
+        afterTrickComplete: handleAfterTrickComplete,
+        beforeHandScore: handleBeforeHandScore,
+        afterHandScored: handleAfterHandScored,
+    },
+});
+
+const game = controller.engine;
+const state = controller.state;
 
 /* Presentation/session-only state. None of these values participate in rules. */
 const runtime = {
@@ -343,107 +363,130 @@ function appendLog(msg, type = 'info') {
     while (list.children.length > 60) list.removeChild(list.lastChild);
 }
 
-/* ===== SMARTER AI ===== */
-function getCurrentTrickWinner() {
-    if (state.currentTrick.length === 0) return -1;
-    return resolveTrickState(state.currentTrick, state.trump).winner;
-}
+/* ===== SINGLE-PLAYER CONTROLLER HOOKS ===== */
+function handleEngineEvents(events) {
+    for (const event of events) {
+        switch (event.type) {
+            case EVENT.HAND_STARTED:
+                clearCardHighlights();
+                refreshUI();
+                appendLog(`── Hand ${event.handNumber} started ──`, 'round');
+                setStatus('Dealing the first four cards…');
+                break;
 
-function getValidIndices(pid) {
-    return game.getLegalCardIndices(pid);
-}
+            case EVENT.TRUMP_REQUIRED:
+                setStatus(`${PLAYER_NAMES[event.playerId]} is choosing trump…`);
+                break;
 
-function aiPlay(pid) {
-    if (state.turnIndex !== pid || runtime.processing) return;
-    const hand     = state.hands[pid];
-    const validIdx = getValidIndices(pid);
-    if (validIdx.length === 0) return;
-    if (validIdx.length === 1) { tryPlayCard(pid, validIdx[0]); return; }
+            case EVENT.TRUMP_SELECTED: {
+                runtime.stats.trumpsCalled[event.playerId]++;
+                Sound.play('trump');
+                updateTrumpBadge();
+                const callerName = PLAYER_NAMES[event.playerId];
+                appendLog(`${callerName} chose <b>${event.suit}</b> ${suitSymbol(event.suit)} as trump`, 'trump');
+                setStatus(`${callerName} chose ${event.suit}. Dealing the final four cards…`);
+                runtime.dealing = true;
+                const deckPile = document.getElementById('deck-pile');
+                if (deckPile) deckPile.style.display = 'flex';
+                break;
+            }
 
-    const isLeading = state.currentTrick.length === 0;
-    const ledSuit   = isLeading ? null : state.currentTrick[0].card.suit;
+            case EVENT.DEAL_COMPLETED: {
+                runtime.dealing = false;
+                const deckPile = document.getElementById('deck-pile');
+                if (deckPile) deckPile.style.display = 'none';
+                refreshUI();
+                setStatus(`${PLAYER_NAMES[event.firstPlayer]} leads first!`);
+                break;
+            }
 
-    if (isLeading) {
-        /* ——— LEADING STRATEGY ——— */
-        // Count how many trump cards have been played
-        const trumpSeen = [...state.playedCards]
-            .filter(k => k.endsWith('-' + state.trump)).length;
+            case EVENT.CARD_PLAYED:
+                Sound.play('card');
+                appendLog(`${PLAYER_NAMES[event.playerId]} played ${event.card.rank}${suitSymbol(event.card.suit)}`, 'play');
+                clearCardHighlights();
+                refreshUI();
+                break;
 
-        // Try to lead highest trump to draw out opponents' trumps
-        const highTrumps = validIdx
-            .filter(i => hand[i].suit === state.trump && ['A', 'K', 'Q'].includes(hand[i].rank))
-            .sort((a, b) => rankValue(hand[b].rank) - rankValue(hand[a].rank));
+            case EVENT.MATCH_RESET:
+                refreshUI();
+                break;
 
-        if (highTrumps.length > 0 && trumpSeen < 4) {
-            tryPlayCard(pid, highTrumps[0]);
-            return;
-        }
-
-        // Lead strongest non-trump
-        const nonTrump = validIdx
-            .filter(i => hand[i].suit !== state.trump)
-            .sort((a, b) => rankValue(hand[b].rank) - rankValue(hand[a].rank));
-
-        if (nonTrump.length > 0) { tryPlayCard(pid, nonTrump[0]); return; }
-
-        // Fall back: highest card
-        validIdx.sort((a, b) => rankValue(hand[b].rank) - rankValue(hand[a].rank));
-        tryPlayCard(pid, validIdx[0]);
-
-    } else {
-        /* ——— FOLLOWING STRATEGY ——— */
-        const currentWinner  = getCurrentTrickWinner();
-        const partnerWinning = teamOf(currentWinner) === teamOf(pid);
-
-        const winnerCard = state.currentTrick.find(p => p.player === currentWinner)?.card;
-        const winStrength = cardStrength(winnerCard, ledSuit, state.trump);
-
-        const canBeat = i => cardStrength(hand[i], ledSuit, state.trump) > winStrength;
-
-        if (partnerWinning) {
-            // Partner winning — duck with lowest, avoid spending trumps
-            const nonTrumpLow = validIdx
-                .filter(i => hand[i].suit !== state.trump)
-                .sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
-            if (nonTrumpLow.length > 0) { tryPlayCard(pid, nonTrumpLow[0]); return; }
-            // All trumps left — play lowest trump
-            validIdx.sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
-            tryPlayCard(pid, validIdx[0]);
-
-        } else {
-            // Opponent winning — try to win with the lowest winning card
-            const winners = validIdx
-                .filter(canBeat)
-                .sort((a, b) => cardStrength(hand[a], ledSuit, state.trump) - cardStrength(hand[b], ledSuit, state.trump));
-
-            if (winners.length > 0) { tryPlayCard(pid, winners[0]); return; }
-
-            // Can't win — discard lowest non-trump
-            const discards = validIdx
-                .filter(i => hand[i].suit !== state.trump)
-                .sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
-
-            if (discards.length > 0) { tryPlayCard(pid, discards[0]); return; }
-
-            // Only trumps remain — discard lowest
-            validIdx.sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
-            tryPlayCard(pid, validIdx[0]);
+            default:
+                break;
         }
     }
 }
 
-function aiPickTrump(callerPid) {
-    const hand   = state.hands[callerPid];
-    const counts = { Hearts: 0, Diamonds: 0, Clubs: 0, Spades: 0 };
-    const maxRnk = { Hearts: 0, Diamonds: 0, Clubs: 0, Spades: 0 };
-    hand.forEach(c => {
-        counts[c.suit]++;
-        maxRnk[c.suit] = Math.max(maxRnk[c.suit], rankValue(c.rank));
-    });
-    // Prefer suit with most cards, break ties by highest rank
-    const best = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1] || maxRnk[b[0]] - maxRnk[a[0]])[0][0];
-    confirmTrump(best);
+async function handleDealBatchAnimation({ event }) {
+    runtime.dealing = true;
+    Sound.play('card');
+    renderHand(event.playerIndex);
+    await delay(220);
+}
+
+async function handleHumanTrumpRequired() {
+    runtime.dealing = false;
+    const deckPile = document.getElementById('deck-pile');
+    if (deckPile) deckPile.style.display = 'none';
+    showTrumpModal();
+}
+
+async function handleBeforeAITrump({ playerId }) {
+    runtime.dealing = false;
+    const deckPile = document.getElementById('deck-pile');
+    if (deckPile) deckPile.style.display = 'none';
+    setStatus(`${PLAYER_NAMES[playerId]} is choosing trump…`);
+    await delay(850);
+}
+
+async function handleBeforeAITurn({ playerId }) {
+    runtime.processing = false;
+    setStatus(`${PLAYER_NAMES[playerId]} is thinking…`);
+    updateTurnBadges();
+    await delay(750);
+}
+
+async function handleHumanTurn() {
+    runtime.processing = false;
+    updateTurnBadges();
+    setStatus('YOUR TURN! Click a card to play.');
+    highlightValidCards();
+}
+
+async function handleBeforeTrickComplete({ preview }) {
+    runtime.processing = true;
+    updateTurnBadges();
+    await delay(1000);
+
+    const slotMap = { 0: 'south', 1: 'west', 2: 'north', 3: 'east' };
+    const winSlot = document.getElementById('trick-' + slotMap[preview.winner]);
+    if (winSlot) {
+        winSlot.classList.add('winner-flash');
+        setTimeout(() => winSlot.classList.remove('winner-flash'), 700);
+    }
+
+    const trickNum = state.trickHistory.length + 1;
+    Sound.play('trick');
+    appendLog(`${PLAYER_NAMES[preview.winner]} won trick #${trickNum}`, 'trick');
+    showTrickWinBanner(`${PLAYER_NAMES[preview.winner]} wins the trick!`);
+    await delay(950);
+}
+
+async function handleAfterTrickComplete({ event }) {
+    runtime.stats.tricksWonByPlayer[event.winner]++;
+    runtime.processing = false;
+    refreshUI();
+    setStatus(`${PLAYER_NAMES[event.winner]} won trick #${event.trickNum}!`);
+    await delay(event.handPlayComplete ? 1000 : 600);
+}
+
+async function handleBeforeHandScore() {
+    runtime.processing = true;
+}
+
+async function handleAfterHandScored({ event }) {
+    runtime.processing = false;
+    presentHandResult(event.result);
 }
 
 /* ===== HAND SORT ===== */
@@ -465,9 +508,9 @@ document.getElementById('start-btn').addEventListener('click', () => {
 });
 
 function startRound() {
-    if (state.matchOver) return;
+    if (state.matchOver || controller.isBusy) return;
+    if (![PHASE.IDLE, PHASE.HAND_COMPLETE].includes(state.phase)) return;
 
-    game.startHand();
     runtime.processing = false;
     runtime.dealing = true;
 
@@ -480,50 +523,28 @@ function startRound() {
     updateTrumpBadge();
     updateTurnBadges();
 
-    appendLog(`── Hand ${state.handNumber} started ──`, 'round');
-    setStatus('Dealing the first four cards…');
-
     const deckPile = document.getElementById('deck-pile');
     if (deckPile) deckPile.style.display = 'flex';
 
-    // Traditional Omi is dealt in batches of four, beginning to dealer's right.
-    dealCurrentPhase({
-        onComplete: () => {
-            runtime.dealing = false;
-            if (deckPile) deckPile.style.display = 'none';
-            beginTrumpSelection();
-        },
-    });
+    const operation = state.phase === PHASE.IDLE
+        ? controller.startMatch()
+        : controller.startNextHand();
+
+    operation.catch(error => handleControllerError(error, 'Unable to start the hand.'));
 }
 
-/**
- * Animate one standard batch of four cards at a time. The engine owns the
- * cards and deal order; this UI layer owns only the timing between batches.
- */
-function dealCurrentPhase({ onComplete }) {
-    const dealOneBatch = () => {
-        const result = game.dealNextBatch();
-        Sound.play('card');
-        renderHand(result.playerIndex);
+function handleControllerError(error, fallbackMessage) {
+    console.error(error);
+    runtime.processing = false;
+    runtime.dealing = false;
 
-        if (result.phaseComplete) {
-            onComplete();
-            return;
-        }
-
-        setTimeout(dealOneBatch, 220);
-    };
-
-    setTimeout(dealOneBatch, 200);
-}
-
-function beginTrumpSelection() {
-    setStatus(`${PLAYER_NAMES[state.trumpCaller]} is choosing trump…`);
-    if (state.trumpCaller === 0) {
-        showTrumpModal();
+    if (error instanceof OmiRuleError) {
+        setStatus(error.message);
     } else {
-        setTimeout(() => aiPickTrump(state.trumpCaller), 850);
+        setStatus(fallbackMessage);
     }
+
+    updateTurnBadges();
 }
 
 function showTrumpModal() {
@@ -550,121 +571,28 @@ document.querySelectorAll('.suit-btn').forEach(btn => {
 });
 
 function confirmTrump(suit) {
-    try {
-        game.selectTrump(suit);
-    } catch (error) {
-        console.error('Unable to select trump:', error);
-        setStatus('Unable to select trump. Please restart the hand.');
-        return;
-    }
-
-    runtime.stats.trumpsCalled[state.trumpCaller]++;
-    Sound.play('trump');
-    updateTrumpBadge();
-
-    const callerName = PLAYER_NAMES[state.trumpCaller];
-    appendLog(`${callerName} chose <b>${suit}</b> ${suitSymbol(suit)} as trump`, 'trump');
-    setStatus(`${callerName} chose ${suit}. Dealing the final four cards…`);
-
-    runtime.dealing = true;
-    const deckPile = document.getElementById('deck-pile');
-    if (deckPile) deckPile.style.display = 'flex';
-
-    dealCurrentPhase({
-        onComplete: () => {
-            runtime.dealing = false;
-            if (deckPile) deckPile.style.display = 'none';
-            refreshUI();
-            setStatus(`${callerName} leads first!`);
-            processTurn();
-        },
-    });
-}
-
-/* ===== TURN PROCESSING ===== */
-function processTurn() {
-    if (runtime.processing || runtime.dealing || state.phase !== PHASE.PLAYING) return;
-    updateTurnBadges();
-
-    if (state.turnIndex === 0) {
-        setStatus('YOUR TURN! Click a card to play.');
-        highlightValidCards();
-    } else {
-        const aiPid = state.turnIndex;
-        setStatus(`${PLAYER_NAMES[aiPid]} is thinking…`);
-        setTimeout(() => aiPlay(aiPid), 750);
-    }
+    controller.selectTrump(suit)
+        .catch(error => handleControllerError(error, 'Unable to select trump. Please restart the hand.'));
 }
 
 function tryPlayCard(playerIndex, cardIndex) {
-    if (runtime.processing || runtime.dealing || state.phase !== PHASE.PLAYING) return false;
+    if (playerIndex !== 0 || runtime.processing || runtime.dealing || controller.isBusy) return false;
+    if (state.phase !== PHASE.PLAYING || state.turnIndex !== 0) return false;
 
     const hand = state.hands[playerIndex];
     const card = hand[cardIndex];
     if (!card) return false;
 
     if (!game.isLegalPlay(playerIndex, cardIndex)) {
-        if (playerIndex === 0 && state.currentTrick.length > 0) {
+        if (state.currentTrick.length > 0) {
             setStatus(`Must follow suit: ${state.currentTrick[0].card.suit}!`);
         }
         return false;
     }
 
-    let result;
-    try {
-        result = game.playCard(playerIndex, cardIndex);
-    } catch (error) {
-        if (error instanceof OmiRuleError) {
-            if (playerIndex === 0) setStatus(error.message);
-            return false;
-        }
-        throw error;
-    }
-
-    Sound.play('card');
-    appendLog(`${PLAYER_NAMES[playerIndex]} played ${card.rank}${suitSymbol(card.suit)}`, 'play');
-
-    clearCardHighlights();
-    refreshUI();
-
-    if (result.trickComplete) {
-        runtime.processing = true;
-        setTimeout(resolveCompletedTrick, 1000);
-    } else {
-        processTurn();
-    }
+    controller.playHumanCard(cardIndex)
+        .catch(error => handleControllerError(error, 'Unable to play that card.'));
     return true;
-}
-
-function resolveCompletedTrick() {
-    const preview = game.peekCurrentTrickResult();
-
-    const slotMap = { 0: 'south', 1: 'west', 2: 'north', 3: 'east' };
-    const winSlot = document.getElementById('trick-' + slotMap[preview.winner]);
-    if (winSlot) {
-        winSlot.classList.add('winner-flash');
-        setTimeout(() => winSlot.classList.remove('winner-flash'), 700);
-    }
-
-    const trickNum = state.trickHistory.length + 1;
-    Sound.play('trick');
-    appendLog(`${PLAYER_NAMES[preview.winner]} won trick #${trickNum}`, 'trick');
-    showTrickWinBanner(`${PLAYER_NAMES[preview.winner]} wins the trick!`);
-
-    setTimeout(() => {
-        const result = game.completeTrick();
-        runtime.stats.tricksWonByPlayer[result.winner]++;
-        runtime.processing = false;
-
-        refreshUI();
-        setStatus(`${PLAYER_NAMES[result.winner]} won trick #${result.trickNum}!`);
-
-        if (result.handComplete) {
-            setTimeout(endRound, 1000);
-        } else {
-            setTimeout(processTurn, 600);
-        }
-    }, 950);
 }
 
 function showTrickWinBanner(msg) {
@@ -681,18 +609,9 @@ function showTrickWinBanner(msg) {
     }, 1100);
 }
 
-function endRound() {
+function presentHandResult(result) {
     const ns = state.teamTricks[0];
     const ew = state.teamTricks[1];
-
-    let result;
-    try {
-        result = game.scoreCurrentHand();
-    } catch (error) {
-        console.error('Unable to score completed hand:', error);
-        setStatus('Unable to score this hand. Please restart the match.');
-        return;
-    }
 
     let msg;
     if (result.tied) {
@@ -847,23 +766,24 @@ document.getElementById('log-close-btn').addEventListener('click', () => {
 document.getElementById('match-play-again-btn').addEventListener('click', () => {
     Sound.init();
     document.getElementById('match-win-overlay').classList.add('hidden');
-    // Reset the pure rules engine and presentation-only statistics separately.
-    game.resetMatch();
-    runtime.processing = false;
-    runtime.dealing = false;
-    runtime.gameLog = [];
-    runtime.stats = {
-        tricksWonByPlayer: [0, 0, 0, 0],
-        roundsWon: [0, 0],
-        kaputhis: [0, 0],
-        defends: [0, 0],
-        trumpsCalled: [0, 0, 0, 0],
-    };
-    document.getElementById('game-log-list').innerHTML = '';
-    document.getElementById('show-stats-btn').style.display = 'none';
-    refreshUI();
-    const btn = document.getElementById('start-btn');
-    btn.textContent    = 'Start Game';
-    btn.style.display  = 'inline-block';
-    document.getElementById('sort-btn').style.display = 'none';
+
+    controller.resetMatch().then(() => {
+        runtime.processing = false;
+        runtime.dealing = false;
+        runtime.gameLog = [];
+        runtime.stats = {
+            tricksWonByPlayer: [0, 0, 0, 0],
+            roundsWon: [0, 0],
+            kaputhis: [0, 0],
+            defends: [0, 0],
+            trumpsCalled: [0, 0, 0, 0],
+        };
+        document.getElementById('game-log-list').innerHTML = '';
+        document.getElementById('show-stats-btn').style.display = 'none';
+        refreshUI();
+        const btn = document.getElementById('start-btn');
+        btn.textContent    = 'Start Game';
+        btn.style.display  = 'inline-block';
+        document.getElementById('sort-btn').style.display = 'none';
+    }).catch(error => handleControllerError(error, 'Unable to reset the match.'));
 });

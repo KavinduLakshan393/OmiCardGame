@@ -1,0 +1,2111 @@
+diff --git a/README.md b/README.md
+index eacb41b..4e4a3a4 100644
+--- a/README.md
++++ b/README.md
+@@ -2,17 +2,27 @@
+ 
+ A browser-based implementation of the Sri Lankan partnership trick-taking card game Omi.
+ 
+-## Batch 1 status
++## Batch 2 status
+ 
+-The project now uses a pure rules/state engine under `src/engine/` while retaining the current prototype UI.
++The current branch now contains the single-player architecture defined by implementation-plan Patches 3, 4, and 5 on top of the Batch 1 standard-rules engine.
+ 
+-Implemented standard-mode foundations:
++Implemented foundations:
++
++- explicit engine actions and serializable domain events;
++- stable `cardId`-based play commands suitable for future networking;
++- detached engine state snapshots for controller/AI consumers;
++- dedicated DOM-independent `SinglePlayerController`;
++- controller-owned human/AI turn sequencing and animation-completion hooks;
++- extracted Casual and Smart AI strategies;
++- fair AI knowledge views that expose no hidden teammate/opponent hands;
++- public card tracking, partner awareness, and known-void-suit inference;
++- the existing prototype UI now talks to the controller instead of directly running AI/game-flow transitions.
++
++Standard Omi foundations from Batch 1 remain unchanged:
+ 
+ - 32-card deck: 7 through Ace in all four suits;
+-- four fixed partnership players;
+ - counter-clockwise deal and play;
+-- dealer-right trump selection after the first four cards;
+-- mandatory trump selection;
++- dealer-right compulsory trump selection after the first four cards;
+ - second four-card batch after trump;
+ - standard follow-suit and trick rules;
+ - 10-token match target;
+@@ -21,17 +31,20 @@ Implemented standard-mode foundations:
+ - Kapothi: 3 tokens;
+ - 4-4: no immediate award, with carry to the next decisive hand.
+ 
+-Joker and pass-trump are intentionally not part of Standard Mode.
++Joker and pass-trump remain intentionally excluded from Standard Mode.
+ 
+ ## Project structure
+ 
+ ```text
+-index.html              Current prototype UI / game entry
+-script.js               Legacy presentation/controller and AI timing
+-src/engine/             Pure Omi rules and state engine
+-tests/                  Node built-in test suite
+-docs/                   Batch/audit documentation
+-style.css                Reserved for later CSS extraction
++index.html                       Current prototype UI / game entry
++script.js                        Presentation, audio, DOM rendering, animation hooks
++src/engine/                      Authoritative Omi rules, actions, events and state
++src/controllers/                 Single-player orchestration
++src/ai/                          Fair-information AI strategies and knowledge model
++scripts/check.mjs                Cross-platform project syntax check
++tests/                           Node built-in automated tests
++docs/                            Batch/audit documentation
++style.css                        Reserved for later CSS extraction
+ ```
+ 
+ ## Requirements
+@@ -41,15 +54,13 @@ style.css                Reserved for later CSS extraction
+ 
+ ## Run locally
+ 
+-Because `script.js` now uses native ES modules, serve the directory over HTTP instead of opening `index.html` directly with `file://`.
+-
+-For example:
++Serve the directory over HTTP instead of opening `index.html` with `file://`.
+ 
+ ```bash
+ python -m http.server 8000
+ ```
+ 
+-Then open:
++Open:
+ 
+ ```text
+ http://localhost:8000/
+@@ -63,7 +74,7 @@ No npm dependencies are required.
+ npm test
+ ```
+ 
+-Optional syntax check:
++Run syntax checks across `script.js` and all `src/**/*.js` files:
+ 
+ ```bash
+ npm run check
+@@ -71,4 +82,4 @@ npm run check
+ 
+ ## Welcome / Main Menu
+ 
+-The basic Welcome page is maintained separately by the user. Main Menu integration is scheduled for Patch 6. See `docs/welcome-routing-contract.md`.
++The basic Welcome page is maintained separately by the user. Main Menu integration remains scheduled for Patch 6, followed by the complete Tutorial in Patch 7. See `docs/welcome-routing-contract.md`.
+diff --git a/docs/batch-2-notes.md b/docs/batch-2-notes.md
+new file mode 100644
+index 0000000..5c106ca
+--- /dev/null
++++ b/docs/batch-2-notes.md
+@@ -0,0 +1,170 @@
++# Batch 2 — Implementation Notes
++
++Batch 2 implements implementation-plan Patches 3, 4, and 5.
++
++## Patch 3 — Action and Event Architecture
++
++Added engine command modules:
++
++```text
++src/engine/actions.js
++src/engine/events.js
++src/engine/snapshot.js
++```
++
++`GameEngine.dispatch(action)` is now the preferred application integration surface.
++
++Implemented commands:
++
++```text
++START_MATCH
++START_NEXT_HAND
++DEAL_NEXT_BATCH
++SELECT_TRUMP
++PLAY_CARD
++COMPLETE_TRICK
++SCORE_HAND
++RESET_MATCH
++```
++
++Important design decisions:
++
++- `PLAY_CARD` accepts stable card IDs instead of depending on UI array indices;
++- engine actions validate the acting player and current game phase;
++- successful transitions produce serializable domain events;
++- returned state is a detached snapshot and cannot mutate authoritative state;
++- the rules engine still contains no presentation timers.
++
++Implemented domain events include:
++
++```text
++MATCH_STARTED
++MATCH_RESET
++HAND_STARTED
++CARDS_DEALT
++INITIAL_CARDS_DEALT
++TRUMP_REQUIRED
++TRUMP_SELECTED
++DEAL_COMPLETED
++CARD_PLAYED
++TRICK_READY
++TRICK_COMPLETED
++HAND_TIED
++TOKENS_AWARDED
++HAND_COMPLETED
++MATCH_COMPLETED
++```
++
++## Patch 4 — Single-Player Controller
++
++Added:
++
++```text
++src/controllers/SinglePlayerController.js
++```
++
++The controller now owns:
++
++- match/hand orchestration;
++- first-four and second-four deal progression;
++- human trump input boundary;
++- AI trump decisions;
++- human turn boundary;
++- AI turn sequencing;
++- trick completion sequencing;
++- hand scoring transition;
++- serialized action queue;
++- presentation animation-completion hooks.
++
++The controller does not access the DOM or Web Audio API.
++
++The current `script.js` supplies presentation hooks and remains responsible for:
++
++- rendering;
++- audio;
++- status text;
++- visual delays;
++- winner flash;
++- overlays;
++- statistics UI.
++
++## Patch 5 — Fair AI Architecture
++
++Added:
++
++```text
++src/ai/AIPlayer.js
++src/ai/knowledge.js
++src/ai/casualAI.js
++src/ai/smartAI.js
++src/ai/index.js
++```
++
++### Casual AI
++
++- always chooses a legal card;
++- intentionally low-complexity/random play;
++- random trump choice.
++
++### Smart AI
++
++Preserves and formalizes useful prototype heuristics:
++
++- suit-length/high-card trump selection;
++- partner awareness;
++- lowest winning card behaviour;
++- avoids wasting trump when partner is already winning;
++- high-trump leading when appropriate;
++- public card counting;
++- known void-suit inference from public off-suit plays.
++
++### Hidden-information boundary
++
++AI receives:
++
++- its own hand;
++- legal cards;
++- trump;
++- current public trick;
++- completed public tricks;
++- public played cards;
++- score/hand context;
++- publicly inferable void suits.
++
++AI does **not** receive teammate or opponent hidden hands.
++
++## UI integration
++
++The legacy prototype UI is still intentionally retained until the later UI redesign patches, but game flow has moved away from direct engine mutation:
++
++```text
++DOM / UI
++   ↓
++SinglePlayerController
++   ↓
++GameEngine.dispatch(...)
++   ↑
++Fair AI strategy
++```
++
++## Verification
++
++Batch 2 automated verification covers:
++
++- action/event sequencing;
++- detached state snapshots;
++- card-ID play actions;
++- wrong trump-caller rejection;
++- AI hidden-information boundary;
++- Casual AI legality;
++- Smart trump selection;
++- Smart partner-aware ducking;
++- public void-suit inference;
++- controller first-four pause for human trump;
++- second deal + AI turn orchestration;
++- complete controller-driven eight-trick hand and scoring;
++- all Batch 1 rule tests.
++
++Final Batch 2 automated result: **34 tests passed, 0 failed**.
++
++`npm run check` also validates syntax for `script.js` and all JavaScript files under `src/`.
+diff --git a/package.json b/package.json
+index 1d18a56..b560bd2 100644
+--- a/package.json
++++ b/package.json
+@@ -5,7 +5,7 @@
+   "type": "module",
+   "scripts": {
+     "test": "node --test",
+-    "check": "node --check script.js"
++    "check": "node scripts/check.mjs"
+   },
+   "engines": {
+     "node": ">=20"
+diff --git a/script.js b/script.js
+index 42e3f6a..2ba20a0 100644
+--- a/script.js
++++ b/script.js
+@@ -8,21 +8,41 @@
+    ============================================================ */
+ 
+ import {
++    EVENT,
+     GameEngine,
+     OmiRuleError,
+     PHASE,
+     PLAYER_NAMES,
+-    RANKS,
+-    cardStrength,
+     isRed,
+     rankValue,
+-    resolveTrick as resolveTrickState,
+     suitSymbol,
+     teamOf,
+ } from './src/engine/index.js';
++import { AI_DIFFICULTY } from './src/ai/AIPlayer.js';
++import { SinglePlayerController } from './src/controllers/SinglePlayerController.js';
++
++const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
++
++const controller = new SinglePlayerController({
++    engine: new GameEngine(),
++    humanPlayerId: 0,
++    difficulty: AI_DIFFICULTY.SMART,
++    hooks: {
++        onEvents: handleEngineEvents,
++        afterDealBatch: handleDealBatchAnimation,
++        onHumanTrumpRequired: handleHumanTrumpRequired,
++        beforeAITrump: handleBeforeAITrump,
++        beforeAITurn: handleBeforeAITurn,
++        onHumanTurn: handleHumanTurn,
++        beforeTrickComplete: handleBeforeTrickComplete,
++        afterTrickComplete: handleAfterTrickComplete,
++        beforeHandScore: handleBeforeHandScore,
++        afterHandScored: handleAfterHandScored,
++    },
++});
+ 
+-const game = new GameEngine();
+-const state = game.state;
++const game = controller.engine;
++const state = controller.state;
+ 
+ /* Presentation/session-only state. None of these values participate in rules. */
+ const runtime = {
+@@ -343,107 +363,130 @@ function appendLog(msg, type = 'info') {
+     while (list.children.length > 60) list.removeChild(list.lastChild);
+ }
+ 
+-/* ===== SMARTER AI ===== */
+-function getCurrentTrickWinner() {
+-    if (state.currentTrick.length === 0) return -1;
+-    return resolveTrickState(state.currentTrick, state.trump).winner;
+-}
+-
+-function getValidIndices(pid) {
+-    return game.getLegalCardIndices(pid);
+-}
++/* ===== SINGLE-PLAYER CONTROLLER HOOKS ===== */
++function handleEngineEvents(events) {
++    for (const event of events) {
++        switch (event.type) {
++            case EVENT.HAND_STARTED:
++                clearCardHighlights();
++                refreshUI();
++                appendLog(`── Hand ${event.handNumber} started ──`, 'round');
++                setStatus('Dealing the first four cards…');
++                break;
+ 
+-function aiPlay(pid) {
+-    if (state.turnIndex !== pid || runtime.processing) return;
+-    const hand     = state.hands[pid];
+-    const validIdx = getValidIndices(pid);
+-    if (validIdx.length === 0) return;
+-    if (validIdx.length === 1) { tryPlayCard(pid, validIdx[0]); return; }
++            case EVENT.TRUMP_REQUIRED:
++                setStatus(`${PLAYER_NAMES[event.playerId]} is choosing trump…`);
++                break;
+ 
+-    const isLeading = state.currentTrick.length === 0;
+-    const ledSuit   = isLeading ? null : state.currentTrick[0].card.suit;
++            case EVENT.TRUMP_SELECTED: {
++                runtime.stats.trumpsCalled[event.playerId]++;
++                Sound.play('trump');
++                updateTrumpBadge();
++                const callerName = PLAYER_NAMES[event.playerId];
++                appendLog(`${callerName} chose <b>${event.suit}</b> ${suitSymbol(event.suit)} as trump`, 'trump');
++                setStatus(`${callerName} chose ${event.suit}. Dealing the final four cards…`);
++                runtime.dealing = true;
++                const deckPile = document.getElementById('deck-pile');
++                if (deckPile) deckPile.style.display = 'flex';
++                break;
++            }
++
++            case EVENT.DEAL_COMPLETED: {
++                runtime.dealing = false;
++                const deckPile = document.getElementById('deck-pile');
++                if (deckPile) deckPile.style.display = 'none';
++                refreshUI();
++                setStatus(`${PLAYER_NAMES[event.firstPlayer]} leads first!`);
++                break;
++            }
+ 
+-    if (isLeading) {
+-        /* ——— LEADING STRATEGY ——— */
+-        // Count how many trump cards have been played
+-        const trumpSeen = [...state.playedCards]
+-            .filter(k => k.endsWith('-' + state.trump)).length;
++            case EVENT.CARD_PLAYED:
++                Sound.play('card');
++                appendLog(`${PLAYER_NAMES[event.playerId]} played ${event.card.rank}${suitSymbol(event.card.suit)}`, 'play');
++                clearCardHighlights();
++                refreshUI();
++                break;
+ 
+-        // Try to lead highest trump to draw out opponents' trumps
+-        const highTrumps = validIdx
+-            .filter(i => hand[i].suit === state.trump && ['A', 'K', 'Q'].includes(hand[i].rank))
+-            .sort((a, b) => rankValue(hand[b].rank) - rankValue(hand[a].rank));
++            case EVENT.MATCH_RESET:
++                refreshUI();
++                break;
+ 
+-        if (highTrumps.length > 0 && trumpSeen < 4) {
+-            tryPlayCard(pid, highTrumps[0]);
+-            return;
++            default:
++                break;
+         }
++    }
++}
+ 
+-        // Lead strongest non-trump
+-        const nonTrump = validIdx
+-            .filter(i => hand[i].suit !== state.trump)
+-            .sort((a, b) => rankValue(hand[b].rank) - rankValue(hand[a].rank));
+-
+-        if (nonTrump.length > 0) { tryPlayCard(pid, nonTrump[0]); return; }
+-
+-        // Fall back: highest card
+-        validIdx.sort((a, b) => rankValue(hand[b].rank) - rankValue(hand[a].rank));
+-        tryPlayCard(pid, validIdx[0]);
++async function handleDealBatchAnimation({ event }) {
++    runtime.dealing = true;
++    Sound.play('card');
++    renderHand(event.playerIndex);
++    await delay(220);
++}
+ 
+-    } else {
+-        /* ——— FOLLOWING STRATEGY ——— */
+-        const currentWinner  = getCurrentTrickWinner();
+-        const partnerWinning = teamOf(currentWinner) === teamOf(pid);
++async function handleHumanTrumpRequired() {
++    runtime.dealing = false;
++    const deckPile = document.getElementById('deck-pile');
++    if (deckPile) deckPile.style.display = 'none';
++    showTrumpModal();
++}
+ 
+-        const winnerCard = state.currentTrick.find(p => p.player === currentWinner)?.card;
+-        const winStrength = cardStrength(winnerCard, ledSuit, state.trump);
++async function handleBeforeAITrump({ playerId }) {
++    runtime.dealing = false;
++    const deckPile = document.getElementById('deck-pile');
++    if (deckPile) deckPile.style.display = 'none';
++    setStatus(`${PLAYER_NAMES[playerId]} is choosing trump…`);
++    await delay(850);
++}
+ 
+-        const canBeat = i => cardStrength(hand[i], ledSuit, state.trump) > winStrength;
++async function handleBeforeAITurn({ playerId }) {
++    runtime.processing = false;
++    setStatus(`${PLAYER_NAMES[playerId]} is thinking…`);
++    updateTurnBadges();
++    await delay(750);
++}
+ 
+-        if (partnerWinning) {
+-            // Partner winning — duck with lowest, avoid spending trumps
+-            const nonTrumpLow = validIdx
+-                .filter(i => hand[i].suit !== state.trump)
+-                .sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
+-            if (nonTrumpLow.length > 0) { tryPlayCard(pid, nonTrumpLow[0]); return; }
+-            // All trumps left — play lowest trump
+-            validIdx.sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
+-            tryPlayCard(pid, validIdx[0]);
++async function handleHumanTurn() {
++    runtime.processing = false;
++    updateTurnBadges();
++    setStatus('YOUR TURN! Click a card to play.');
++    highlightValidCards();
++}
+ 
+-        } else {
+-            // Opponent winning — try to win with the lowest winning card
+-            const winners = validIdx
+-                .filter(canBeat)
+-                .sort((a, b) => cardStrength(hand[a], ledSuit, state.trump) - cardStrength(hand[b], ledSuit, state.trump));
++async function handleBeforeTrickComplete({ preview }) {
++    runtime.processing = true;
++    updateTurnBadges();
++    await delay(1000);
+ 
+-            if (winners.length > 0) { tryPlayCard(pid, winners[0]); return; }
++    const slotMap = { 0: 'south', 1: 'west', 2: 'north', 3: 'east' };
++    const winSlot = document.getElementById('trick-' + slotMap[preview.winner]);
++    if (winSlot) {
++        winSlot.classList.add('winner-flash');
++        setTimeout(() => winSlot.classList.remove('winner-flash'), 700);
++    }
+ 
+-            // Can't win — discard lowest non-trump
+-            const discards = validIdx
+-                .filter(i => hand[i].suit !== state.trump)
+-                .sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
++    const trickNum = state.trickHistory.length + 1;
++    Sound.play('trick');
++    appendLog(`${PLAYER_NAMES[preview.winner]} won trick #${trickNum}`, 'trick');
++    showTrickWinBanner(`${PLAYER_NAMES[preview.winner]} wins the trick!`);
++    await delay(950);
++}
+ 
+-            if (discards.length > 0) { tryPlayCard(pid, discards[0]); return; }
++async function handleAfterTrickComplete({ event }) {
++    runtime.stats.tricksWonByPlayer[event.winner]++;
++    runtime.processing = false;
++    refreshUI();
++    setStatus(`${PLAYER_NAMES[event.winner]} won trick #${event.trickNum}!`);
++    await delay(event.handPlayComplete ? 1000 : 600);
++}
+ 
+-            // Only trumps remain — discard lowest
+-            validIdx.sort((a, b) => rankValue(hand[a].rank) - rankValue(hand[b].rank));
+-            tryPlayCard(pid, validIdx[0]);
+-        }
+-    }
++async function handleBeforeHandScore() {
++    runtime.processing = true;
+ }
+ 
+-function aiPickTrump(callerPid) {
+-    const hand   = state.hands[callerPid];
+-    const counts = { Hearts: 0, Diamonds: 0, Clubs: 0, Spades: 0 };
+-    const maxRnk = { Hearts: 0, Diamonds: 0, Clubs: 0, Spades: 0 };
+-    hand.forEach(c => {
+-        counts[c.suit]++;
+-        maxRnk[c.suit] = Math.max(maxRnk[c.suit], rankValue(c.rank));
+-    });
+-    // Prefer suit with most cards, break ties by highest rank
+-    const best = Object.entries(counts)
+-        .sort((a, b) => b[1] - a[1] || maxRnk[b[0]] - maxRnk[a[0]])[0][0];
+-    confirmTrump(best);
++async function handleAfterHandScored({ event }) {
++    runtime.processing = false;
++    presentHandResult(event.result);
+ }
+ 
+ /* ===== HAND SORT ===== */
+@@ -465,9 +508,9 @@ document.getElementById('start-btn').addEventListener('click', () => {
+ });
+ 
+ function startRound() {
+-    if (state.matchOver) return;
++    if (state.matchOver || controller.isBusy) return;
++    if (![PHASE.IDLE, PHASE.HAND_COMPLETE].includes(state.phase)) return;
+ 
+-    game.startHand();
+     runtime.processing = false;
+     runtime.dealing = true;
+ 
+@@ -480,50 +523,28 @@ function startRound() {
+     updateTrumpBadge();
+     updateTurnBadges();
+ 
+-    appendLog(`── Hand ${state.handNumber} started ──`, 'round');
+-    setStatus('Dealing the first four cards…');
+-
+     const deckPile = document.getElementById('deck-pile');
+     if (deckPile) deckPile.style.display = 'flex';
+ 
+-    // Traditional Omi is dealt in batches of four, beginning to dealer's right.
+-    dealCurrentPhase({
+-        onComplete: () => {
+-            runtime.dealing = false;
+-            if (deckPile) deckPile.style.display = 'none';
+-            beginTrumpSelection();
+-        },
+-    });
+-}
+-
+-/**
+- * Animate one standard batch of four cards at a time. The engine owns the
+- * cards and deal order; this UI layer owns only the timing between batches.
+- */
+-function dealCurrentPhase({ onComplete }) {
+-    const dealOneBatch = () => {
+-        const result = game.dealNextBatch();
+-        Sound.play('card');
+-        renderHand(result.playerIndex);
+-
+-        if (result.phaseComplete) {
+-            onComplete();
+-            return;
+-        }
+-
+-        setTimeout(dealOneBatch, 220);
+-    };
++    const operation = state.phase === PHASE.IDLE
++        ? controller.startMatch()
++        : controller.startNextHand();
+ 
+-    setTimeout(dealOneBatch, 200);
++    operation.catch(error => handleControllerError(error, 'Unable to start the hand.'));
+ }
+ 
+-function beginTrumpSelection() {
+-    setStatus(`${PLAYER_NAMES[state.trumpCaller]} is choosing trump…`);
+-    if (state.trumpCaller === 0) {
+-        showTrumpModal();
++function handleControllerError(error, fallbackMessage) {
++    console.error(error);
++    runtime.processing = false;
++    runtime.dealing = false;
++
++    if (error instanceof OmiRuleError) {
++        setStatus(error.message);
+     } else {
+-        setTimeout(() => aiPickTrump(state.trumpCaller), 850);
++        setStatus(fallbackMessage);
+     }
++
++    updateTurnBadges();
+ }
+ 
+ function showTrumpModal() {
+@@ -550,123 +571,30 @@ document.querySelectorAll('.suit-btn').forEach(btn => {
+ });
+ 
+ function confirmTrump(suit) {
+-    try {
+-        game.selectTrump(suit);
+-    } catch (error) {
+-        console.error('Unable to select trump:', error);
+-        setStatus('Unable to select trump. Please restart the hand.');
+-        return;
+-    }
+-
+-    runtime.stats.trumpsCalled[state.trumpCaller]++;
+-    Sound.play('trump');
+-    updateTrumpBadge();
+-
+-    const callerName = PLAYER_NAMES[state.trumpCaller];
+-    appendLog(`${callerName} chose <b>${suit}</b> ${suitSymbol(suit)} as trump`, 'trump');
+-    setStatus(`${callerName} chose ${suit}. Dealing the final four cards…`);
+-
+-    runtime.dealing = true;
+-    const deckPile = document.getElementById('deck-pile');
+-    if (deckPile) deckPile.style.display = 'flex';
+-
+-    dealCurrentPhase({
+-        onComplete: () => {
+-            runtime.dealing = false;
+-            if (deckPile) deckPile.style.display = 'none';
+-            refreshUI();
+-            setStatus(`${callerName} leads first!`);
+-            processTurn();
+-        },
+-    });
+-}
+-
+-/* ===== TURN PROCESSING ===== */
+-function processTurn() {
+-    if (runtime.processing || runtime.dealing || state.phase !== PHASE.PLAYING) return;
+-    updateTurnBadges();
+-
+-    if (state.turnIndex === 0) {
+-        setStatus('YOUR TURN! Click a card to play.');
+-        highlightValidCards();
+-    } else {
+-        const aiPid = state.turnIndex;
+-        setStatus(`${PLAYER_NAMES[aiPid]} is thinking…`);
+-        setTimeout(() => aiPlay(aiPid), 750);
+-    }
++    controller.selectTrump(suit)
++        .catch(error => handleControllerError(error, 'Unable to select trump. Please restart the hand.'));
+ }
+ 
+ function tryPlayCard(playerIndex, cardIndex) {
+-    if (runtime.processing || runtime.dealing || state.phase !== PHASE.PLAYING) return false;
++    if (playerIndex !== 0 || runtime.processing || runtime.dealing || controller.isBusy) return false;
++    if (state.phase !== PHASE.PLAYING || state.turnIndex !== 0) return false;
+ 
+     const hand = state.hands[playerIndex];
+     const card = hand[cardIndex];
+     if (!card) return false;
+ 
+     if (!game.isLegalPlay(playerIndex, cardIndex)) {
+-        if (playerIndex === 0 && state.currentTrick.length > 0) {
++        if (state.currentTrick.length > 0) {
+             setStatus(`Must follow suit: ${state.currentTrick[0].card.suit}!`);
+         }
+         return false;
+     }
+ 
+-    let result;
+-    try {
+-        result = game.playCard(playerIndex, cardIndex);
+-    } catch (error) {
+-        if (error instanceof OmiRuleError) {
+-            if (playerIndex === 0) setStatus(error.message);
+-            return false;
+-        }
+-        throw error;
+-    }
+-
+-    Sound.play('card');
+-    appendLog(`${PLAYER_NAMES[playerIndex]} played ${card.rank}${suitSymbol(card.suit)}`, 'play');
+-
+-    clearCardHighlights();
+-    refreshUI();
+-
+-    if (result.trickComplete) {
+-        runtime.processing = true;
+-        setTimeout(resolveCompletedTrick, 1000);
+-    } else {
+-        processTurn();
+-    }
++    controller.playHumanCard(cardIndex)
++        .catch(error => handleControllerError(error, 'Unable to play that card.'));
+     return true;
+ }
+ 
+-function resolveCompletedTrick() {
+-    const preview = game.peekCurrentTrickResult();
+-
+-    const slotMap = { 0: 'south', 1: 'west', 2: 'north', 3: 'east' };
+-    const winSlot = document.getElementById('trick-' + slotMap[preview.winner]);
+-    if (winSlot) {
+-        winSlot.classList.add('winner-flash');
+-        setTimeout(() => winSlot.classList.remove('winner-flash'), 700);
+-    }
+-
+-    const trickNum = state.trickHistory.length + 1;
+-    Sound.play('trick');
+-    appendLog(`${PLAYER_NAMES[preview.winner]} won trick #${trickNum}`, 'trick');
+-    showTrickWinBanner(`${PLAYER_NAMES[preview.winner]} wins the trick!`);
+-
+-    setTimeout(() => {
+-        const result = game.completeTrick();
+-        runtime.stats.tricksWonByPlayer[result.winner]++;
+-        runtime.processing = false;
+-
+-        refreshUI();
+-        setStatus(`${PLAYER_NAMES[result.winner]} won trick #${result.trickNum}!`);
+-
+-        if (result.handComplete) {
+-            setTimeout(endRound, 1000);
+-        } else {
+-            setTimeout(processTurn, 600);
+-        }
+-    }, 950);
+-}
+-
+ function showTrickWinBanner(msg) {
+     const el = document.getElementById('trick-win-overlay');
+     if (!el) return;
+@@ -681,19 +609,10 @@ function showTrickWinBanner(msg) {
+     }, 1100);
+ }
+ 
+-function endRound() {
++function presentHandResult(result) {
+     const ns = state.teamTricks[0];
+     const ew = state.teamTricks[1];
+ 
+-    let result;
+-    try {
+-        result = game.scoreCurrentHand();
+-    } catch (error) {
+-        console.error('Unable to score completed hand:', error);
+-        setStatus('Unable to score this hand. Please restart the match.');
+-        return;
+-    }
+-
+     let msg;
+     if (result.tied) {
+         const carryLabel = result.nextCarryTokens === 1 ? 'token' : 'tokens';
+@@ -847,23 +766,24 @@ document.getElementById('log-close-btn').addEventListener('click', () => {
+ document.getElementById('match-play-again-btn').addEventListener('click', () => {
+     Sound.init();
+     document.getElementById('match-win-overlay').classList.add('hidden');
+-    // Reset the pure rules engine and presentation-only statistics separately.
+-    game.resetMatch();
+-    runtime.processing = false;
+-    runtime.dealing = false;
+-    runtime.gameLog = [];
+-    runtime.stats = {
+-        tricksWonByPlayer: [0, 0, 0, 0],
+-        roundsWon: [0, 0],
+-        kaputhis: [0, 0],
+-        defends: [0, 0],
+-        trumpsCalled: [0, 0, 0, 0],
+-    };
+-    document.getElementById('game-log-list').innerHTML = '';
+-    document.getElementById('show-stats-btn').style.display = 'none';
+-    refreshUI();
+-    const btn = document.getElementById('start-btn');
+-    btn.textContent    = 'Start Game';
+-    btn.style.display  = 'inline-block';
+-    document.getElementById('sort-btn').style.display = 'none';
++
++    controller.resetMatch().then(() => {
++        runtime.processing = false;
++        runtime.dealing = false;
++        runtime.gameLog = [];
++        runtime.stats = {
++            tricksWonByPlayer: [0, 0, 0, 0],
++            roundsWon: [0, 0],
++            kaputhis: [0, 0],
++            defends: [0, 0],
++            trumpsCalled: [0, 0, 0, 0],
++        };
++        document.getElementById('game-log-list').innerHTML = '';
++        document.getElementById('show-stats-btn').style.display = 'none';
++        refreshUI();
++        const btn = document.getElementById('start-btn');
++        btn.textContent    = 'Start Game';
++        btn.style.display  = 'inline-block';
++        document.getElementById('sort-btn').style.display = 'none';
++    }).catch(error => handleControllerError(error, 'Unable to reset the match.'));
+ });
+diff --git a/scripts/check.mjs b/scripts/check.mjs
+new file mode 100644
+index 0000000..88910bb
+--- /dev/null
++++ b/scripts/check.mjs
+@@ -0,0 +1,17 @@
++import { readdirSync, statSync } from 'node:fs';
++import { join } from 'node:path';
++import { spawnSync } from 'node:child_process';
++
++function collectJavaScript(path) {
++    if (statSync(path).isFile()) return path.endsWith('.js') ? [path] : [];
++    return readdirSync(path).flatMap(name => collectJavaScript(join(path, name)));
++}
++
++const files = ['script.js', ...collectJavaScript('src')];
++
++for (const file of files) {
++    const result = spawnSync(process.execPath, ['--check', file], { stdio: 'inherit' });
++    if (result.status !== 0) process.exit(result.status ?? 1);
++}
++
++console.log(`Syntax check passed for ${files.length} JavaScript files.`);
+diff --git a/src/ai/AIPlayer.js b/src/ai/AIPlayer.js
+new file mode 100644
+index 0000000..fe5ee3f
+--- /dev/null
++++ b/src/ai/AIPlayer.js
+@@ -0,0 +1,44 @@
++import { chooseCasualCard, chooseCasualTrump } from './casualAI.js';
++import { chooseSmartCard, chooseSmartTrump } from './smartAI.js';
++
++export const AI_DIFFICULTY = Object.freeze({
++    CASUAL: 'CASUAL',
++    SMART: 'SMART',
++});
++
++function assertDifficulty(difficulty) {
++    if (!Object.values(AI_DIFFICULTY).includes(difficulty)) {
++        throw new RangeError(`Unsupported AI difficulty: ${difficulty}`);
++    }
++}
++
++/**
++ * Small strategy facade used by the controller.
++ * The AI receives a fair knowledge view and returns declarative decisions;
++ * it never receives the engine or manipulates the DOM/state itself.
++ */
++export class AIPlayer {
++    constructor({ difficulty = AI_DIFFICULTY.SMART, rng = Math.random } = {}) {
++        assertDifficulty(difficulty);
++        if (typeof rng !== 'function') throw new TypeError('AI rng must be a function');
++        this.difficulty = difficulty;
++        this.rng = rng;
++    }
++
++    setDifficulty(difficulty) {
++        assertDifficulty(difficulty);
++        this.difficulty = difficulty;
++    }
++
++    chooseTrump(knowledge) {
++        return this.difficulty === AI_DIFFICULTY.CASUAL
++            ? chooseCasualTrump(knowledge, this.rng)
++            : chooseSmartTrump(knowledge);
++    }
++
++    chooseCard(knowledge) {
++        return this.difficulty === AI_DIFFICULTY.CASUAL
++            ? chooseCasualCard(knowledge, this.rng)
++            : chooseSmartCard(knowledge);
++    }
++}
+diff --git a/src/ai/casualAI.js b/src/ai/casualAI.js
+new file mode 100644
+index 0000000..10abd3d
+--- /dev/null
++++ b/src/ai/casualAI.js
+@@ -0,0 +1,22 @@
++import { SUITS } from '../engine/constants.js';
++
++function randomIndex(length, rng) {
++    if (length <= 0) throw new RangeError('Cannot select from an empty collection');
++    const value = rng();
++    if (!Number.isFinite(value) || value < 0 || value >= 1) {
++        throw new RangeError('AI rng must return a finite number in [0, 1)');
++    }
++    return Math.floor(value * length);
++}
++
++/** Beginner-friendly AI: always legal, intentionally low-complexity. */
++export function chooseCasualTrump(_knowledge, rng = Math.random) {
++    return SUITS[randomIndex(SUITS.length, rng)];
++}
++
++export function chooseCasualCard(knowledge, rng = Math.random) {
++    if (knowledge.legalCards.length === 0) {
++        throw new Error('Casual AI has no legal card to play');
++    }
++    return knowledge.legalCards[randomIndex(knowledge.legalCards.length, rng)].cardId;
++}
+diff --git a/src/ai/index.js b/src/ai/index.js
+new file mode 100644
+index 0000000..94acd16
+--- /dev/null
++++ b/src/ai/index.js
+@@ -0,0 +1,4 @@
++export * from './AIPlayer.js';
++export * from './knowledge.js';
++export * from './casualAI.js';
++export * from './smartAI.js';
+diff --git a/src/ai/knowledge.js b/src/ai/knowledge.js
+new file mode 100644
+index 0000000..d7b0c50
+--- /dev/null
++++ b/src/ai/knowledge.js
+@@ -0,0 +1,89 @@
++import { cardId } from '../engine/cards.js';
++import { PLAYER_COUNT } from '../engine/constants.js';
++import { partnerOf, teamOf } from '../engine/players.js';
++import { getLegalCardIndices } from '../engine/rules.js';
++
++function assertPlayerId(playerId) {
++    if (!Number.isInteger(playerId) || playerId < 0 || playerId >= PLAYER_COUNT) {
++        throw new RangeError(`Invalid AI player id: ${playerId}`);
++    }
++}
++
++function copyCard(card) {
++    return Object.freeze({ suit: card.suit, rank: card.rank });
++}
++
++function copyPlay(play) {
++    return Object.freeze({ player: play.player, card: copyCard(play.card) });
++}
++
++function inferKnownVoidSuits(completedTricks, currentTrick) {
++    const voids = Array.from({ length: PLAYER_COUNT }, () => new Set());
++    const tricks = [
++        ...completedTricks.map(trick => trick.plays),
++        currentTrick,
++    ];
++
++    for (const plays of tricks) {
++        if (plays.length < 2) continue;
++        const leadSuit = plays[0].card.suit;
++        for (const play of plays.slice(1)) {
++            if (play.card.suit !== leadSuit) voids[play.player].add(leadSuit);
++        }
++    }
++
++    return Object.freeze(voids.map(suits => Object.freeze([...suits])));
++}
++
++/**
++ * Build the complete information an AI player is allowed to observe.
++ *
++ * Crucially, this view exposes only the AI player's own hand plus public
++ * information. No teammate/opponent hidden hand is copied into the view.
++ */
++export function buildAIKnowledge(state, playerId) {
++    assertPlayerId(playerId);
++
++    const ownHand = state.hands[playerId].map(copyCard);
++    const currentTrick = state.currentTrick.map(copyPlay);
++    const completedTricks = state.trickHistory.map(trick => Object.freeze({
++        trickNum: trick.trickNum,
++        winner: trick.winner,
++        plays: Object.freeze(trick.plays.map(copyPlay)),
++    }));
++
++    const publicPlayedCards = [
++        ...completedTricks.flatMap(trick => trick.plays.map(play => play.card)),
++        ...currentTrick.map(play => play.card),
++    ];
++    const knownVoidSuits = inferKnownVoidSuits(completedTricks, currentTrick);
++
++    const legalIndices = getLegalCardIndices(ownHand, currentTrick);
++    const legalCards = legalIndices.map(index => Object.freeze({
++        index,
++        cardId: cardId(ownHand[index]),
++        card: ownHand[index],
++    }));
++
++    return Object.freeze({
++        playerId,
++        teamId: teamOf(playerId),
++        partnerId: partnerOf(playerId),
++        ownHand: Object.freeze(ownHand),
++        legalCards: Object.freeze(legalCards),
++        currentTrick: Object.freeze(currentTrick),
++        completedTricks: Object.freeze(completedTricks),
++        publicPlayedCards: Object.freeze(publicPlayedCards),
++        knownVoidSuits,
++        trump: state.trump,
++        trumpCaller: state.trumpCaller,
++        currentPlayerId: state.turnIndex,
++        dealerId: state.dealerIndex,
++        handNumber: state.handNumber,
++        teamTricks: Object.freeze([...state.teamTricks]),
++        tokens: Object.freeze([...state.tokens]),
++        carryTokens: state.carryTokens,
++        matchTokenTarget: state.matchTokenTarget,
++        phase: state.phase,
++    });
++}
+diff --git a/src/ai/smartAI.js b/src/ai/smartAI.js
+new file mode 100644
+index 0000000..3ec961b
+--- /dev/null
++++ b/src/ai/smartAI.js
+@@ -0,0 +1,103 @@
++import { rankValue } from '../engine/cards.js';
++import { SUITS } from '../engine/constants.js';
++import { teamOf } from '../engine/players.js';
++import { cardStrength, resolveTrick } from '../engine/trick.js';
++
++function byRankAscending(a, b) {
++    return rankValue(a.card.rank) - rankValue(b.card.rank);
++}
++
++function byRankDescending(a, b) {
++    return rankValue(b.card.rank) - rankValue(a.card.rank);
++}
++
++/**
++ * Pick trump using only the first four visible cards.
++ * Suit length is the primary signal; high-card strength breaks close ties.
++ */
++export function chooseSmartTrump(knowledge) {
++    const scores = new Map(SUITS.map(suit => [suit, 0]));
++
++    for (const card of knowledge.ownHand) {
++        // Length is intentionally weighted more heavily than one isolated high card.
++        const highCardBonus = rankValue(card.rank) / 10;
++        scores.set(card.suit, scores.get(card.suit) + 10 + highCardBonus);
++    }
++
++    return [...scores.entries()]
++        .sort((a, b) => b[1] - a[1] || SUITS.indexOf(a[0]) - SUITS.indexOf(b[0]))[0][0];
++}
++
++/**
++ * Preserve the useful heuristics from the prototype while operating only on
++ * the fair AI knowledge view.
++ */
++export function chooseSmartCard(knowledge) {
++    const legal = [...knowledge.legalCards];
++    if (legal.length === 0) throw new Error('Smart AI has no legal card to play');
++    if (legal.length === 1) return legal[0].cardId;
++
++    const isLeading = knowledge.currentTrick.length === 0;
++    if (isLeading) return chooseLead(knowledge, legal);
++    return chooseFollow(knowledge, legal);
++}
++
++function chooseLead(knowledge, legal) {
++    const trump = knowledge.trump;
++    const trumpSeen = knowledge.publicPlayedCards.filter(card => card.suit === trump).length;
++
++    // Use an authoritative high trump early to draw opposing trump cards.
++    const highTrumps = legal
++        .filter(entry => entry.card.suit === trump && ['A', 'K', 'Q'].includes(entry.card.rank))
++        .sort(byRankDescending);
++
++    if (highTrumps.length > 0 && trumpSeen < 4) {
++        return highTrumps[0].cardId;
++    }
++
++    // Otherwise pressure opponents with the strongest non-trump lead.
++    const nonTrump = legal
++        .filter(entry => entry.card.suit !== trump)
++        .sort(byRankDescending);
++
++    if (nonTrump.length > 0) return nonTrump[0].cardId;
++
++    legal.sort(byRankDescending);
++    return legal[0].cardId;
++}
++
++function chooseFollow(knowledge, legal) {
++    const leadSuit = knowledge.currentTrick[0].card.suit;
++    const current = resolveTrick(knowledge.currentTrick, knowledge.trump);
++    const partnerWinning = teamOf(current.winner) === knowledge.teamId;
++    const winningStrength = cardStrength(current.winningCard, leadSuit, knowledge.trump);
++
++    if (partnerWinning) {
++        // Preserve trump where possible while partner already controls the trick.
++        const nonTrumpLow = legal
++            .filter(entry => entry.card.suit !== knowledge.trump)
++            .sort(byRankAscending);
++        if (nonTrumpLow.length > 0) return nonTrumpLow[0].cardId;
++
++        legal.sort(byRankAscending);
++        return legal[0].cardId;
++    }
++
++    // Opponent is winning: spend only the lowest card that can take the trick.
++    const winners = legal
++        .filter(entry => cardStrength(entry.card, leadSuit, knowledge.trump) > winningStrength)
++        .sort((a, b) =>
++            cardStrength(a.card, leadSuit, knowledge.trump)
++            - cardStrength(b.card, leadSuit, knowledge.trump));
++
++    if (winners.length > 0) return winners[0].cardId;
++
++    // Cannot win: discard a low non-trump before wasting trump.
++    const nonTrumpLow = legal
++        .filter(entry => entry.card.suit !== knowledge.trump)
++        .sort(byRankAscending);
++    if (nonTrumpLow.length > 0) return nonTrumpLow[0].cardId;
++
++    legal.sort(byRankAscending);
++    return legal[0].cardId;
++}
+diff --git a/src/controllers/SinglePlayerController.js b/src/controllers/SinglePlayerController.js
+new file mode 100644
+index 0000000..908328c
+--- /dev/null
++++ b/src/controllers/SinglePlayerController.js
+@@ -0,0 +1,288 @@
++import { AI_DIFFICULTY, AIPlayer } from '../ai/AIPlayer.js';
++import { buildAIKnowledge } from '../ai/knowledge.js';
++import { ACTION } from '../engine/actions.js';
++import { cardId } from '../engine/cards.js';
++import { PHASE, PLAYER_COUNT } from '../engine/constants.js';
++import { EVENT } from '../engine/events.js';
++import { GameEngine, OmiRuleError } from '../engine/GameEngine.js';
++
++const asyncNoop = async () => {};
++
++const DEFAULT_HOOKS = Object.freeze({
++    onEvents: asyncNoop,
++    afterDealBatch: asyncNoop,
++    onHumanTrumpRequired: asyncNoop,
++    beforeAITrump: asyncNoop,
++    beforeAITurn: asyncNoop,
++    onHumanTurn: asyncNoop,
++    afterCardPlayed: asyncNoop,
++    beforeTrickComplete: asyncNoop,
++    afterTrickComplete: asyncNoop,
++    beforeHandScore: asyncNoop,
++    afterHandScored: asyncNoop,
++});
++
++/**
++ * Orchestrates one human plus three AI players without knowing anything about
++ * HTML, CSS, audio, or concrete animation implementations.
++ *
++ * Presentation code can provide asynchronous hooks. The controller awaits
++ * those hooks before advancing authoritative state, which gives animations a
++ * clean completion boundary while keeping all timing out of the rules engine.
++ */
++export class SinglePlayerController {
++    constructor({
++        engine = new GameEngine(),
++        humanPlayerId = 0,
++        difficulty = AI_DIFFICULTY.SMART,
++        aiRng = Math.random,
++        hooks = {},
++    } = {}) {
++        if (!(engine instanceof GameEngine)) {
++            throw new TypeError('engine must be a GameEngine');
++        }
++        if (!Number.isInteger(humanPlayerId) || humanPlayerId < 0 || humanPlayerId >= PLAYER_COUNT) {
++            throw new RangeError(`Invalid human player id: ${humanPlayerId}`);
++        }
++
++        this.engine = engine;
++        this.humanPlayerId = humanPlayerId;
++        this.hooks = { ...DEFAULT_HOOKS, ...hooks };
++        this._queue = Promise.resolve();
++        this._pendingTasks = 0;
++        this._aiPlayers = new Map();
++
++        for (let playerId = 0; playerId < PLAYER_COUNT; playerId += 1) {
++            if (playerId !== humanPlayerId) {
++                this._aiPlayers.set(playerId, new AIPlayer({ difficulty, rng: aiRng }));
++            }
++        }
++    }
++
++    get state() {
++        return this.engine.state;
++    }
++
++    get isBusy() {
++        return this._pendingTasks > 0;
++    }
++
++    getSnapshot() {
++        return this.engine.getSnapshot();
++    }
++
++    getLegalHumanCardIndices() {
++        return this.engine.getLegalCardIndices(this.humanPlayerId);
++    }
++
++    setDifficulty(difficulty) {
++        for (const player of this._aiPlayers.values()) {
++            player.setDifficulty(difficulty);
++        }
++    }
++
++    startMatch() {
++        return this.#enqueue(async () => {
++            await this.#dispatch({ type: ACTION.START_MATCH });
++            await this.#dealCurrentPhase();
++            await this.#continueFromTrumpSelection();
++            return this.getSnapshot();
++        });
++    }
++
++    startNextHand() {
++        return this.#enqueue(async () => {
++            await this.#dispatch({ type: ACTION.START_NEXT_HAND });
++            await this.#dealCurrentPhase();
++            await this.#continueFromTrumpSelection();
++            return this.getSnapshot();
++        });
++    }
++
++    selectTrump(suit) {
++        return this.#enqueue(async () => {
++            if (this.state.trumpCaller !== this.humanPlayerId) {
++                throw new OmiRuleError('WRONG_TRUMP_CALLER', 'The human player is not the trump caller');
++            }
++
++            await this.#selectTrumpAndContinue(this.humanPlayerId, suit);
++            return this.getSnapshot();
++        });
++    }
++
++    playHumanCard(cardIndexOrId) {
++        return this.#enqueue(async () => {
++            if (this.state.phase !== PHASE.PLAYING) {
++                throw new OmiRuleError('INVALID_PHASE', `Cannot play during ${this.state.phase}`);
++            }
++            if (this.state.turnIndex !== this.humanPlayerId) {
++                throw new OmiRuleError('WRONG_TURN', 'It is not the human player\'s turn');
++            }
++
++            const action = this.#humanPlayAction(cardIndexOrId);
++            await this.#playActionAndAdvance(action);
++            return this.getSnapshot();
++        });
++    }
++
++    resetMatch() {
++        return this.#enqueue(async () => {
++            await this.#dispatch({ type: ACTION.RESET_MATCH });
++            return this.getSnapshot();
++        });
++    }
++
++    #humanPlayAction(cardIndexOrId) {
++        if (typeof cardIndexOrId === 'string') {
++            return {
++                type: ACTION.PLAY_CARD,
++                playerId: this.humanPlayerId,
++                cardId: cardIndexOrId,
++            };
++        }
++
++        if (!Number.isInteger(cardIndexOrId)) {
++            throw new OmiRuleError('INVALID_CARD', 'Card selection must be a card id or integer index');
++        }
++
++        const card = this.state.hands[this.humanPlayerId][cardIndexOrId];
++        if (!card) {
++            throw new OmiRuleError('INVALID_CARD', `Invalid card index: ${cardIndexOrId}`);
++        }
++
++        return {
++            type: ACTION.PLAY_CARD,
++            playerId: this.humanPlayerId,
++            cardId: cardId(card),
++        };
++    }
++
++    async #continueFromTrumpSelection() {
++        if (this.state.phase !== PHASE.TRUMP_SELECTION) return;
++
++        if (this.state.trumpCaller === this.humanPlayerId) {
++            await this.hooks.onHumanTrumpRequired({
++                playerId: this.humanPlayerId,
++                state: this.getSnapshot(),
++            });
++            return;
++        }
++
++        const playerId = this.state.trumpCaller;
++        await this.hooks.beforeAITrump({ playerId, state: this.getSnapshot() });
++        const knowledge = buildAIKnowledge(this.state, playerId);
++        const suit = this.#aiFor(playerId).chooseTrump(knowledge);
++        await this.#selectTrumpAndContinue(playerId, suit);
++    }
++
++    async #selectTrumpAndContinue(playerId, suit) {
++        await this.#dispatch({
++            type: ACTION.SELECT_TRUMP,
++            playerId,
++            suit,
++        });
++        await this.#dealCurrentPhase();
++        await this.#driveTurnsUntilHumanOrHandEnd();
++    }
++
++    async #dealCurrentPhase() {
++        const phase = this.state.phase;
++        if (![PHASE.DEAL_INITIAL, PHASE.DEAL_REMAINING].includes(phase)) return;
++
++        while (this.state.phase === phase) {
++            const result = await this.#dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++            const dealEvent = result.events.find(event => event.type === EVENT.CARDS_DEALT);
++            await this.hooks.afterDealBatch({
++                event: dealEvent,
++                state: result.state,
++            });
++        }
++    }
++
++    async #driveTurnsUntilHumanOrHandEnd() {
++        while (this.state.phase === PHASE.PLAYING) {
++            if (this.state.turnIndex === this.humanPlayerId) {
++                await this.hooks.onHumanTurn({
++                    playerId: this.humanPlayerId,
++                    legalCardIndices: this.getLegalHumanCardIndices(),
++                    state: this.getSnapshot(),
++                });
++                return;
++            }
++
++            const playerId = this.state.turnIndex;
++            await this.hooks.beforeAITurn({ playerId, state: this.getSnapshot() });
++            const knowledge = buildAIKnowledge(this.state, playerId);
++            const selectedCardId = this.#aiFor(playerId).chooseCard(knowledge);
++
++            await this.#playActionAndAdvance({
++                type: ACTION.PLAY_CARD,
++                playerId,
++                cardId: selectedCardId,
++            }, { continueLoop: false });
++
++            if (this.state.phase !== PHASE.PLAYING) return;
++        }
++    }
++
++    async #playActionAndAdvance(action, { continueLoop = true } = {}) {
++        const result = await this.#dispatch(action);
++        const cardEvent = result.events.find(event => event.type === EVENT.CARD_PLAYED);
++        await this.hooks.afterCardPlayed({ event: cardEvent, state: result.state });
++
++        if (cardEvent.trickComplete) {
++            await this.#finishCurrentTrick();
++        }
++
++        if (continueLoop && this.state.phase === PHASE.PLAYING) {
++            await this.#driveTurnsUntilHumanOrHandEnd();
++        }
++    }
++
++    async #finishCurrentTrick() {
++        const preview = this.engine.peekCurrentTrickResult();
++        await this.hooks.beforeTrickComplete({
++            preview,
++            state: this.getSnapshot(),
++        });
++
++        const result = await this.#dispatch({ type: ACTION.COMPLETE_TRICK });
++        const trickEvent = result.events.find(event => event.type === EVENT.TRICK_COMPLETED);
++        await this.hooks.afterTrickComplete({
++            event: trickEvent,
++            state: result.state,
++        });
++
++        if (this.state.phase === PHASE.HAND_SCORING) {
++            await this.hooks.beforeHandScore({ state: this.getSnapshot() });
++            const scoreResult = await this.#dispatch({ type: ACTION.SCORE_HAND });
++            const handEvent = scoreResult.events.find(event => event.type === EVENT.HAND_COMPLETED);
++            await this.hooks.afterHandScored({
++                event: handEvent,
++                events: scoreResult.events,
++                state: scoreResult.state,
++            });
++        }
++    }
++
++    async #dispatch(action) {
++        const result = this.engine.dispatch(action);
++        await this.hooks.onEvents(result.events, result.state);
++        return result;
++    }
++
++    #aiFor(playerId) {
++        const player = this._aiPlayers.get(playerId);
++        if (!player) throw new Error(`No AI configured for player ${playerId}`);
++        return player;
++    }
++
++    #enqueue(task) {
++        this._pendingTasks += 1;
++        const run = this._queue.then(task, task);
++        this._queue = run.catch(() => {});
++        return run.finally(() => {
++            this._pendingTasks -= 1;
++        });
++    }
++}
+diff --git a/src/engine/GameEngine.js b/src/engine/GameEngine.js
+index 3598c01..599c07c 100644
+--- a/src/engine/GameEngine.js
++++ b/src/engine/GameEngine.js
+@@ -5,13 +5,16 @@ import {
+     PLAYER_COUNT,
+     STANDARD_MATCH_TARGET,
+ } from './constants.js';
++import { ACTION, assertAction } from './actions.js';
+ import { cardId } from './cards.js';
+ import { Deck } from './deck.js';
++import { EVENT, createEvent } from './events.js';
+ import { dealOrderFromDealer, nextCounterClockwise, playerToDealerRight, teamOf } from './players.js';
+ import { assertTrumpSuit, getLegalCardIndices, isLegalPlay } from './rules.js';
+ import { scoreHand } from './scoring.js';
+-import { resolveTrick } from './trick.js';
++import { cloneState } from './snapshot.js';
+ import { createInitialState } from './state.js';
++import { resolveTrick } from './trick.js';
+ 
+ export class OmiRuleError extends Error {
+     constructor(code, message) {
+@@ -22,11 +25,11 @@ export class OmiRuleError extends Error {
+ }
+ 
+ /**
+- * Pure Omi rules/state engine for the standard 32-card game.
++ * Pure authoritative rules/state engine for standard Omi.
+  *
+- * This class deliberately contains no DOM access, audio calls, animation
+- * timers, or browser-specific presentation logic. The legacy UI coordinates
+- * animation timing around these synchronous state transitions.
++ * The engine is synchronous and deliberately contains no DOM access, audio,
++ * animation delays, or AI decisions. Consumers send explicit actions through
++ * dispatch() and receive serializable domain events describing the result.
+  */
+ export class GameEngine {
+     constructor({
+@@ -42,6 +45,245 @@ export class GameEngine {
+         this._dealCursor = 0;
+     }
+ 
++    /** Return a detached, JSON-safe copy of authoritative state. */
++    getSnapshot() {
++        return cloneState(this.state);
++    }
++
++    /**
++     * Apply one explicit game command and return the resulting events/state.
++     *
++     * This is the preferred integration surface for controllers and, later,
++     * the server-side multiplayer transport. Low-level methods remain public
++     * for focused rules tests, but application code should use dispatch().
++     */
++    dispatch(action) {
++        assertAction(action);
++        let events;
++
++        switch (action.type) {
++            case ACTION.START_MATCH:
++                events = this.#dispatchStartMatch();
++                break;
++            case ACTION.START_NEXT_HAND:
++                events = this.#dispatchStartNextHand();
++                break;
++            case ACTION.DEAL_NEXT_BATCH:
++                events = this.#dispatchDealNextBatch();
++                break;
++            case ACTION.SELECT_TRUMP:
++                events = this.#dispatchSelectTrump(action);
++                break;
++            case ACTION.PLAY_CARD:
++                events = this.#dispatchPlayCard(action);
++                break;
++            case ACTION.COMPLETE_TRICK:
++                events = this.#dispatchCompleteTrick();
++                break;
++            case ACTION.SCORE_HAND:
++                events = this.#dispatchScoreHand();
++                break;
++            case ACTION.RESET_MATCH:
++                events = this.#dispatchResetMatch(action);
++                break;
++            default:
++                // assertAction() guarantees this branch is unreachable.
++                throw new RangeError(`Unsupported action type: ${action.type}`);
++        }
++
++        return {
++            events,
++            state: this.getSnapshot(),
++        };
++    }
++
++    #dispatchStartMatch() {
++        if (this.state.phase !== PHASE.IDLE) {
++            throw new OmiRuleError('INVALID_PHASE', `Cannot start a match during ${this.state.phase}`);
++        }
++
++        const hand = this.startHand();
++        return [
++            createEvent(EVENT.MATCH_STARTED, {
++                targetTokens: this.state.matchTokenTarget,
++                dealerIndex: this.state.dealerIndex,
++            }),
++            createEvent(EVENT.HAND_STARTED, {
++                handNumber: this.state.handNumber,
++                ...hand,
++            }),
++        ];
++    }
++
++    #dispatchStartNextHand() {
++        if (this.state.phase !== PHASE.HAND_COMPLETE) {
++            throw new OmiRuleError('INVALID_PHASE', `Cannot start the next hand during ${this.state.phase}`);
++        }
++
++        const hand = this.startHand();
++        return [createEvent(EVENT.HAND_STARTED, {
++            handNumber: this.state.handNumber,
++            ...hand,
++        })];
++    }
++
++    #dispatchDealNextBatch() {
++        const stage = this.state.phase;
++        const result = this.dealNextBatch();
++        const events = [createEvent(EVENT.CARDS_DEALT, {
++            stage,
++            playerIndex: result.playerIndex,
++            cards: result.cards,
++            remainingCards: result.remainingCards,
++        })];
++
++        if (result.phaseComplete && stage === PHASE.DEAL_INITIAL) {
++            events.push(createEvent(EVENT.INITIAL_CARDS_DEALT, {
++                trumpCaller: this.state.trumpCaller,
++                handSizes: this.state.hands.map(hand => hand.length),
++            }));
++            events.push(createEvent(EVENT.TRUMP_REQUIRED, {
++                playerId: this.state.trumpCaller,
++            }));
++        }
++
++        if (result.phaseComplete && stage === PHASE.DEAL_REMAINING) {
++            events.push(createEvent(EVENT.DEAL_COMPLETED, {
++                firstPlayer: this.state.turnIndex,
++                handSizes: this.state.hands.map(hand => hand.length),
++            }));
++        }
++
++        return events;
++    }
++
++    #dispatchSelectTrump(action) {
++        if (!Number.isInteger(action.playerId)) {
++            throw new OmiRuleError('INVALID_PLAYER', 'SELECT_TRUMP requires an integer playerId');
++        }
++        if (action.playerId !== this.state.trumpCaller) {
++            throw new OmiRuleError('WRONG_TRUMP_CALLER', `Player ${action.playerId} cannot select trump`);
++        }
++
++        const result = this.selectTrump(action.suit);
++        return [createEvent(EVENT.TRUMP_SELECTED, {
++            playerId: action.playerId,
++            suit: result.trump,
++        })];
++    }
++
++    #dispatchPlayCard(action) {
++        if (!Number.isInteger(action.playerId)) {
++            throw new OmiRuleError('INVALID_PLAYER', 'PLAY_CARD requires an integer playerId');
++        }
++
++        const hand = this.state.hands[action.playerId];
++        if (!Array.isArray(hand)) {
++            throw new OmiRuleError('INVALID_PLAYER', `Invalid player ${action.playerId}`);
++        }
++
++        const index = this.#resolveActionCardIndex(hand, action);
++        const result = this.playCard(action.playerId, index);
++        const events = [createEvent(EVENT.CARD_PLAYED, {
++            playerId: result.playerIndex,
++            card: result.card,
++            cardId: cardId(result.card),
++            trickComplete: result.trickComplete,
++            nextPlayer: result.nextPlayer,
++        })];
++
++        if (result.trickComplete) {
++            const preview = this.peekCurrentTrickResult();
++            events.push(createEvent(EVENT.TRICK_READY, {
++                winner: preview.winner,
++                winningCard: preview.winningCard,
++                leadSuit: preview.leadSuit,
++                plays: this.state.currentTrick.map(play => ({
++                    player: play.player,
++                    card: play.card,
++                })),
++            }));
++        }
++
++        return events;
++    }
++
++    #resolveActionCardIndex(hand, action) {
++        if (typeof action.cardId === 'string') {
++            const index = hand.findIndex(card => cardId(card) === action.cardId);
++            if (index < 0) {
++                throw new OmiRuleError('INVALID_CARD', `Card ${action.cardId} is not in the player's hand`);
++            }
++            return index;
++        }
++
++        if (Number.isInteger(action.cardIndex)) {
++            return action.cardIndex;
++        }
++
++        throw new OmiRuleError('INVALID_CARD', 'PLAY_CARD requires cardId or cardIndex');
++    }
++
++    #dispatchCompleteTrick() {
++        const result = this.completeTrick();
++        return [createEvent(EVENT.TRICK_COMPLETED, {
++            trickNum: result.trickNum,
++            winner: result.winner,
++            winningCard: result.winningCard,
++            leadSuit: result.leadSuit,
++            team: result.team,
++            handPlayComplete: result.handComplete,
++        })];
++    }
++
++    #dispatchScoreHand() {
++        const result = this.scoreCurrentHand();
++        const events = [];
++
++        if (result.tied) {
++            events.push(createEvent(EVENT.HAND_TIED, {
++                nextCarryTokens: result.nextCarryTokens,
++            }));
++        } else {
++            events.push(createEvent(EVENT.TOKENS_AWARDED, {
++                winnerTeam: result.winnerTeam,
++                baseTokens: result.baseTokens,
++                carryAwarded: result.carryAwarded,
++                tokensAwarded: result.tokensAwarded,
++                isDefense: result.isDefense,
++                isKapothi: result.isKapothi,
++                tokens: result.tokens,
++            }));
++        }
++
++        events.push(createEvent(EVENT.HAND_COMPLETED, {
++            handNumber: this.state.handNumber,
++            teamTricks: [...this.state.teamTricks],
++            callerTeam: result.callerTeam,
++            result,
++        }));
++
++        if (result.matchOver) {
++            const winnerTeam = this.state.tokens[0] >= this.state.matchTokenTarget ? 0 : 1;
++            events.push(createEvent(EVENT.MATCH_COMPLETED, {
++                winnerTeam,
++                tokens: [...this.state.tokens],
++                targetTokens: this.state.matchTokenTarget,
++            }));
++        }
++
++        return events;
++    }
++
++    #dispatchResetMatch(action) {
++        const dealerIndex = action.dealerIndex ?? this.initialDealerIndex;
++        this.resetMatch({ dealerIndex });
++        return [createEvent(EVENT.MATCH_RESET, {
++            dealerIndex: this.state.dealerIndex,
++            targetTokens: this.state.matchTokenTarget,
++        })];
++    }
++
+     resetMatch({ dealerIndex = this.initialDealerIndex } = {}) {
+         const target = this.state.matchTokenTarget;
+         const fresh = createInitialState({ dealerIndex, matchTokenTarget: target });
+@@ -85,8 +327,8 @@ export class GameEngine {
+ 
+     /**
+      * Deal the next batch of four cards during either deal phase.
+-     * The caller controls *when* this method runs; therefore animation timing
+-     * stays outside the engine.
++     * The caller controls when this method runs; animation timing stays out of
++     * the engine.
+      */
+     dealNextBatch() {
+         if (![PHASE.DEAL_INITIAL, PHASE.DEAL_REMAINING].includes(this.state.phase)) {
+diff --git a/src/engine/actions.js b/src/engine/actions.js
+new file mode 100644
+index 0000000..04758d9
+--- /dev/null
++++ b/src/engine/actions.js
+@@ -0,0 +1,26 @@
++/**
++ * Commands accepted by the Omi game engine.
++ *
++ * Keeping command names in one module prevents UI/controller code from
++ * depending on string literals and gives the future multiplayer server a
++ * stable protocol surface.
++ */
++export const ACTION = Object.freeze({
++    START_MATCH: 'START_MATCH',
++    START_NEXT_HAND: 'START_NEXT_HAND',
++    DEAL_NEXT_BATCH: 'DEAL_NEXT_BATCH',
++    SELECT_TRUMP: 'SELECT_TRUMP',
++    PLAY_CARD: 'PLAY_CARD',
++    COMPLETE_TRICK: 'COMPLETE_TRICK',
++    SCORE_HAND: 'SCORE_HAND',
++    RESET_MATCH: 'RESET_MATCH',
++});
++
++export function assertAction(action) {
++    if (!action || typeof action !== 'object' || Array.isArray(action)) {
++        throw new TypeError('action must be an object');
++    }
++    if (!Object.values(ACTION).includes(action.type)) {
++        throw new RangeError(`Unknown action type: ${String(action.type)}`);
++    }
++}
+diff --git a/src/engine/events.js b/src/engine/events.js
+new file mode 100644
+index 0000000..c0fbc3d
+--- /dev/null
++++ b/src/engine/events.js
+@@ -0,0 +1,31 @@
++/**
++ * Domain events emitted after successful engine transitions.
++ *
++ * Events describe what happened; they do not contain DOM nodes, timers,
++ * audio objects, or presentation callbacks. This keeps them serializable and
++ * suitable for logging, tests, save-state diagnostics, and later networking.
++ */
++export const EVENT = Object.freeze({
++    MATCH_STARTED: 'MATCH_STARTED',
++    MATCH_RESET: 'MATCH_RESET',
++    HAND_STARTED: 'HAND_STARTED',
++    CARDS_DEALT: 'CARDS_DEALT',
++    INITIAL_CARDS_DEALT: 'INITIAL_CARDS_DEALT',
++    TRUMP_REQUIRED: 'TRUMP_REQUIRED',
++    TRUMP_SELECTED: 'TRUMP_SELECTED',
++    DEAL_COMPLETED: 'DEAL_COMPLETED',
++    CARD_PLAYED: 'CARD_PLAYED',
++    TRICK_READY: 'TRICK_READY',
++    TRICK_COMPLETED: 'TRICK_COMPLETED',
++    HAND_TIED: 'HAND_TIED',
++    TOKENS_AWARDED: 'TOKENS_AWARDED',
++    HAND_COMPLETED: 'HAND_COMPLETED',
++    MATCH_COMPLETED: 'MATCH_COMPLETED',
++});
++
++export function createEvent(type, payload = {}) {
++    if (!Object.values(EVENT).includes(type)) {
++        throw new RangeError(`Unknown event type: ${String(type)}`);
++    }
++    return Object.freeze({ type, ...payload });
++}
+diff --git a/src/engine/index.js b/src/engine/index.js
+index 6a4aada..c22beed 100644
+--- a/src/engine/index.js
++++ b/src/engine/index.js
+@@ -1,9 +1,12 @@
+ export * from './constants.js';
++export * from './actions.js';
++export * from './events.js';
+ export * from './cards.js';
+ export * from './deck.js';
+ export * from './players.js';
+ export * from './rules.js';
+ export * from './trick.js';
+ export * from './scoring.js';
++export * from './snapshot.js';
+ export * from './state.js';
+ export * from './GameEngine.js';
+diff --git a/src/engine/snapshot.js b/src/engine/snapshot.js
+new file mode 100644
+index 0000000..2d68137
+--- /dev/null
++++ b/src/engine/snapshot.js
+@@ -0,0 +1,11 @@
++/**
++ * Create a JSON-safe copy of engine state.
++ *
++ * Engine state intentionally contains only serializable data. Returning a
++ * detached snapshot protects controller/AI consumers from accidentally
++ * mutating the authoritative state while keeping save/network integration
++ * straightforward.
++ */
++export function cloneState(state) {
++    return JSON.parse(JSON.stringify(state));
++}
+diff --git a/tests/action-events.test.js b/tests/action-events.test.js
+new file mode 100644
+index 0000000..e3c5250
+--- /dev/null
++++ b/tests/action-events.test.js
+@@ -0,0 +1,92 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++    ACTION,
++    EVENT,
++    GameEngine,
++    OmiRuleError,
++    PHASE,
++    PLAYER,
++    cardId,
++} from '../src/engine/index.js';
++
++function seededRng(seed) {
++    let state = seed >>> 0;
++    return () => {
++        state = (1664525 * state + 1013904223) >>> 0;
++        return state / 0x100000000;
++    };
++}
++
++test('dispatch emits match/hand events and detached state snapshots', () => {
++    const game = new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(10) });
++    const result = game.dispatch({ type: ACTION.START_MATCH });
++
++    assert.deepEqual(result.events.map(event => event.type), [EVENT.MATCH_STARTED, EVENT.HAND_STARTED]);
++    assert.equal(result.state.phase, PHASE.DEAL_INITIAL);
++
++    result.state.tokens[0] = 99;
++    assert.equal(game.state.tokens[0], 0, 'returned snapshot must not mutate authoritative state');
++});
++
++test('deal actions emit trump-required and deal-completed boundaries', () => {
++    const game = new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(11) });
++    game.dispatch({ type: ACTION.START_MATCH });
++
++    let finalInitial;
++    for (let i = 0; i < 4; i += 1) {
++        finalInitial = game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    }
++
++    assert.ok(finalInitial.events.some(event => event.type === EVENT.INITIAL_CARDS_DEALT));
++    assert.ok(finalInitial.events.some(event => event.type === EVENT.TRUMP_REQUIRED));
++    assert.equal(game.state.phase, PHASE.TRUMP_SELECTION);
++
++    game.dispatch({
++        type: ACTION.SELECT_TRUMP,
++        playerId: PLAYER.SOUTH,
++        suit: 'Hearts',
++    });
++
++    let finalRemaining;
++    for (let i = 0; i < 4; i += 1) {
++        finalRemaining = game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    }
++
++    assert.ok(finalRemaining.events.some(event => event.type === EVENT.DEAL_COMPLETED));
++    assert.equal(game.state.phase, PHASE.PLAYING);
++});
++
++test('PLAY_CARD accepts stable card ids and emits card/trick events', () => {
++    const game = new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(12) });
++    game.dispatch({ type: ACTION.START_MATCH });
++    for (let i = 0; i < 4; i += 1) game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    game.dispatch({ type: ACTION.SELECT_TRUMP, playerId: PLAYER.SOUTH, suit: 'Spades' });
++    for (let i = 0; i < 4; i += 1) game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++
++    for (let turn = 0; turn < 4; turn += 1) {
++        const playerId = game.state.turnIndex;
++        const legalIndex = game.getLegalCardIndices(playerId)[0];
++        const id = cardId(game.state.hands[playerId][legalIndex]);
++        const result = game.dispatch({ type: ACTION.PLAY_CARD, playerId, cardId: id });
++        assert.equal(result.events[0].type, EVENT.CARD_PLAYED);
++
++        if (turn === 3) {
++            assert.ok(result.events.some(event => event.type === EVENT.TRICK_READY));
++        }
++    }
++
++    const completion = game.dispatch({ type: ACTION.COMPLETE_TRICK });
++    assert.equal(completion.events[0].type, EVENT.TRICK_COMPLETED);
++});
++
++test('action validation rejects wrong trump caller', () => {
++    const game = new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(13) });
++    game.dispatch({ type: ACTION.START_MATCH });
++    for (let i = 0; i < 4; i += 1) game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++
++    assert.throws(
++        () => game.dispatch({ type: ACTION.SELECT_TRUMP, playerId: PLAYER.EAST, suit: 'Clubs' }),
++        error => error instanceof OmiRuleError && error.code === 'WRONG_TRUMP_CALLER',
++    );
++});
+diff --git a/tests/ai.test.js b/tests/ai.test.js
+new file mode 100644
+index 0000000..3d73547
+--- /dev/null
++++ b/tests/ai.test.js
+@@ -0,0 +1,92 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { AI_DIFFICULTY, AIPlayer } from '../src/ai/AIPlayer.js';
++import { buildAIKnowledge } from '../src/ai/knowledge.js';
++import { chooseSmartCard, chooseSmartTrump } from '../src/ai/smartAI.js';
++import { Card, PHASE, PLAYER, createInitialState } from '../src/engine/index.js';
++
++function stateFor(playerId, ownHand, currentTrick = []) {
++    const state = createInitialState();
++    state.phase = PHASE.PLAYING;
++    state.trump = 'Hearts';
++    state.turnIndex = playerId;
++    state.hands[playerId] = ownHand;
++    state.currentTrick = currentTrick;
++    return state;
++}
++
++test('AI knowledge exposes own hand and public information but no hidden hands', () => {
++    const state = createInitialState();
++    state.hands[PLAYER.EAST] = [new Card('Clubs', 'A')];
++    state.hands[PLAYER.SOUTH] = [new Card('Hearts', 'A')];
++    state.hands[PLAYER.NORTH] = [new Card('Diamonds', 'A')];
++    state.hands[PLAYER.WEST] = [new Card('Spades', 'A')];
++
++    const knowledge = buildAIKnowledge(state, PLAYER.EAST);
++
++    assert.equal('hands' in knowledge, false);
++    assert.deepEqual(knowledge.ownHand, [{ suit: 'Clubs', rank: 'A' }]);
++    assert.equal(JSON.stringify(knowledge).includes('Diamonds'), false);
++    assert.equal(JSON.stringify(knowledge).includes('Spades'), false);
++});
++
++test('Casual AI always chooses from the legal card set', () => {
++    const state = stateFor(
++        PLAYER.EAST,
++        [new Card('Clubs', '7'), new Card('Hearts', 'A'), new Card('Clubs', 'K')],
++        [{ player: PLAYER.SOUTH, card: new Card('Clubs', '10') }],
++    );
++    const knowledge = buildAIKnowledge(state, PLAYER.EAST);
++    const ai = new AIPlayer({ difficulty: AI_DIFFICULTY.CASUAL, rng: () => 0.99 });
++    const selected = ai.chooseCard(knowledge);
++
++    assert.ok(knowledge.legalCards.some(entry => entry.cardId === selected));
++    assert.notEqual(selected, 'A-Hearts', 'AI must follow Clubs when it holds Clubs');
++});
++
++test('Smart AI prefers the longest/highest first-four suit for trump', () => {
++    const state = createInitialState();
++    state.hands[PLAYER.EAST] = [
++        new Card('Spades', 'A'),
++        new Card('Spades', 'K'),
++        new Card('Spades', '7'),
++        new Card('Hearts', 'A'),
++    ];
++    const knowledge = buildAIKnowledge(state, PLAYER.EAST);
++    assert.equal(chooseSmartTrump(knowledge), 'Spades');
++});
++
++test('Smart AI ducks low when its partner is already winning', () => {
++    const state = stateFor(
++        PLAYER.NORTH,
++        [new Card('Clubs', '7'), new Card('Clubs', 'A'), new Card('Hearts', '7')],
++        [
++            { player: PLAYER.SOUTH, card: new Card('Clubs', 'K') },
++            { player: PLAYER.EAST, card: new Card('Clubs', 'Q') },
++        ],
++    );
++    const knowledge = buildAIKnowledge(state, PLAYER.NORTH);
++
++    assert.equal(chooseSmartCard(knowledge), '7-Clubs');
++});
++
++
++test('AI knowledge infers publicly known void suits from off-suit plays', () => {
++    const state = createInitialState();
++    state.trump = 'Hearts';
++    state.trickHistory = [{
++        trickNum: 1,
++        winner: PLAYER.SOUTH,
++        plays: [
++            { player: PLAYER.SOUTH, card: new Card('Clubs', 'A') },
++            { player: PLAYER.EAST, card: new Card('Spades', '7') },
++            { player: PLAYER.NORTH, card: new Card('Clubs', 'K') },
++            { player: PLAYER.WEST, card: new Card('Hearts', '8') },
++        ],
++    }];
++
++    const knowledge = buildAIKnowledge(state, PLAYER.NORTH);
++    assert.deepEqual(knowledge.knownVoidSuits[PLAYER.EAST], ['Clubs']);
++    assert.deepEqual(knowledge.knownVoidSuits[PLAYER.WEST], ['Clubs']);
++    assert.deepEqual(knowledge.knownVoidSuits[PLAYER.SOUTH], []);
++});
+diff --git a/tests/controller.test.js b/tests/controller.test.js
+new file mode 100644
+index 0000000..d74dfd8
+--- /dev/null
++++ b/tests/controller.test.js
+@@ -0,0 +1,76 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { SinglePlayerController } from '../src/controllers/SinglePlayerController.js';
++import { AI_DIFFICULTY } from '../src/ai/AIPlayer.js';
++import { GameEngine, PHASE, PLAYER } from '../src/engine/index.js';
++
++function seededRng(seed) {
++    let state = seed >>> 0;
++    return () => {
++        state = (1664525 * state + 1013904223) >>> 0;
++        return state / 0x100000000;
++    };
++}
++
++test('controller deals first four and pauses for human trump selection', async () => {
++    let requestedTrump = false;
++    const controller = new SinglePlayerController({
++        engine: new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(20) }),
++        hooks: {
++            onHumanTrumpRequired: async () => { requestedTrump = true; },
++        },
++    });
++
++    await controller.startMatch();
++
++    assert.equal(controller.state.phase, PHASE.TRUMP_SELECTION);
++    assert.deepEqual(controller.state.hands.map(hand => hand.length), [4, 4, 4, 4]);
++    assert.equal(controller.state.trumpCaller, PLAYER.SOUTH);
++    assert.equal(requestedTrump, true);
++});
++
++test('controller handles second deal and AI turns until human input is required', async () => {
++    const controller = new SinglePlayerController({
++        engine: new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(21) }),
++        difficulty: AI_DIFFICULTY.SMART,
++    });
++
++    await controller.startMatch();
++    await controller.selectTrump('Hearts');
++
++    assert.equal(controller.state.phase, PHASE.PLAYING);
++    assert.deepEqual(controller.state.hands.map(hand => hand.length), [8, 8, 8, 8]);
++    assert.equal(controller.state.turnIndex, PLAYER.SOUTH);
++
++    const legal = controller.getLegalHumanCardIndices();
++    await controller.playHumanCard(legal[0]);
++
++    assert.equal(controller.state.phase, PHASE.PLAYING);
++    assert.equal(controller.state.turnIndex, PLAYER.SOUTH);
++    assert.equal(controller.state.hands[PLAYER.SOUTH].length, 7);
++});
++
++test('controller can complete and score an entire hand with fair AI', async () => {
++    const controller = new SinglePlayerController({
++        engine: new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(22) }),
++        difficulty: AI_DIFFICULTY.SMART,
++    });
++
++    await controller.startMatch();
++    await controller.selectTrump('Diamonds');
++
++    let humanPlays = 0;
++    while (controller.state.phase === PHASE.PLAYING) {
++        assert.equal(controller.state.turnIndex, PLAYER.SOUTH);
++        const legal = controller.getLegalHumanCardIndices();
++        await controller.playHumanCard(legal[0]);
++        humanPlays += 1;
++        assert.ok(humanPlays <= 8, 'a hand cannot require more than eight human card plays');
++    }
++
++    assert.equal(humanPlays, 8);
++    assert.ok([PHASE.HAND_COMPLETE, PHASE.MATCH_COMPLETE].includes(controller.state.phase));
++    assert.equal(controller.state.trickHistory.length, 8);
++    assert.deepEqual(controller.state.hands.map(hand => hand.length), [0, 0, 0, 0]);
++    assert.equal(controller.state.teamTricks[0] + controller.state.teamTricks[1], 8);
++});

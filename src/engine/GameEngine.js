@@ -5,13 +5,16 @@ import {
     PLAYER_COUNT,
     STANDARD_MATCH_TARGET,
 } from './constants.js';
+import { ACTION, assertAction } from './actions.js';
 import { cardId } from './cards.js';
 import { Deck } from './deck.js';
+import { EVENT, createEvent } from './events.js';
 import { dealOrderFromDealer, nextCounterClockwise, playerToDealerRight, teamOf } from './players.js';
 import { assertTrumpSuit, getLegalCardIndices, isLegalPlay } from './rules.js';
 import { scoreHand } from './scoring.js';
-import { resolveTrick } from './trick.js';
+import { cloneState } from './snapshot.js';
 import { createInitialState } from './state.js';
+import { resolveTrick } from './trick.js';
 
 export class OmiRuleError extends Error {
     constructor(code, message) {
@@ -22,11 +25,11 @@ export class OmiRuleError extends Error {
 }
 
 /**
- * Pure Omi rules/state engine for the standard 32-card game.
+ * Pure authoritative rules/state engine for standard Omi.
  *
- * This class deliberately contains no DOM access, audio calls, animation
- * timers, or browser-specific presentation logic. The legacy UI coordinates
- * animation timing around these synchronous state transitions.
+ * The engine is synchronous and deliberately contains no DOM access, audio,
+ * animation delays, or AI decisions. Consumers send explicit actions through
+ * dispatch() and receive serializable domain events describing the result.
  */
 export class GameEngine {
     constructor({
@@ -40,6 +43,245 @@ export class GameEngine {
         this._deck = null;
         this._dealOrder = [];
         this._dealCursor = 0;
+    }
+
+    /** Return a detached, JSON-safe copy of authoritative state. */
+    getSnapshot() {
+        return cloneState(this.state);
+    }
+
+    /**
+     * Apply one explicit game command and return the resulting events/state.
+     *
+     * This is the preferred integration surface for controllers and, later,
+     * the server-side multiplayer transport. Low-level methods remain public
+     * for focused rules tests, but application code should use dispatch().
+     */
+    dispatch(action) {
+        assertAction(action);
+        let events;
+
+        switch (action.type) {
+            case ACTION.START_MATCH:
+                events = this.#dispatchStartMatch();
+                break;
+            case ACTION.START_NEXT_HAND:
+                events = this.#dispatchStartNextHand();
+                break;
+            case ACTION.DEAL_NEXT_BATCH:
+                events = this.#dispatchDealNextBatch();
+                break;
+            case ACTION.SELECT_TRUMP:
+                events = this.#dispatchSelectTrump(action);
+                break;
+            case ACTION.PLAY_CARD:
+                events = this.#dispatchPlayCard(action);
+                break;
+            case ACTION.COMPLETE_TRICK:
+                events = this.#dispatchCompleteTrick();
+                break;
+            case ACTION.SCORE_HAND:
+                events = this.#dispatchScoreHand();
+                break;
+            case ACTION.RESET_MATCH:
+                events = this.#dispatchResetMatch(action);
+                break;
+            default:
+                // assertAction() guarantees this branch is unreachable.
+                throw new RangeError(`Unsupported action type: ${action.type}`);
+        }
+
+        return {
+            events,
+            state: this.getSnapshot(),
+        };
+    }
+
+    #dispatchStartMatch() {
+        if (this.state.phase !== PHASE.IDLE) {
+            throw new OmiRuleError('INVALID_PHASE', `Cannot start a match during ${this.state.phase}`);
+        }
+
+        const hand = this.startHand();
+        return [
+            createEvent(EVENT.MATCH_STARTED, {
+                targetTokens: this.state.matchTokenTarget,
+                dealerIndex: this.state.dealerIndex,
+            }),
+            createEvent(EVENT.HAND_STARTED, {
+                handNumber: this.state.handNumber,
+                ...hand,
+            }),
+        ];
+    }
+
+    #dispatchStartNextHand() {
+        if (this.state.phase !== PHASE.HAND_COMPLETE) {
+            throw new OmiRuleError('INVALID_PHASE', `Cannot start the next hand during ${this.state.phase}`);
+        }
+
+        const hand = this.startHand();
+        return [createEvent(EVENT.HAND_STARTED, {
+            handNumber: this.state.handNumber,
+            ...hand,
+        })];
+    }
+
+    #dispatchDealNextBatch() {
+        const stage = this.state.phase;
+        const result = this.dealNextBatch();
+        const events = [createEvent(EVENT.CARDS_DEALT, {
+            stage,
+            playerIndex: result.playerIndex,
+            cards: result.cards,
+            remainingCards: result.remainingCards,
+        })];
+
+        if (result.phaseComplete && stage === PHASE.DEAL_INITIAL) {
+            events.push(createEvent(EVENT.INITIAL_CARDS_DEALT, {
+                trumpCaller: this.state.trumpCaller,
+                handSizes: this.state.hands.map(hand => hand.length),
+            }));
+            events.push(createEvent(EVENT.TRUMP_REQUIRED, {
+                playerId: this.state.trumpCaller,
+            }));
+        }
+
+        if (result.phaseComplete && stage === PHASE.DEAL_REMAINING) {
+            events.push(createEvent(EVENT.DEAL_COMPLETED, {
+                firstPlayer: this.state.turnIndex,
+                handSizes: this.state.hands.map(hand => hand.length),
+            }));
+        }
+
+        return events;
+    }
+
+    #dispatchSelectTrump(action) {
+        if (!Number.isInteger(action.playerId)) {
+            throw new OmiRuleError('INVALID_PLAYER', 'SELECT_TRUMP requires an integer playerId');
+        }
+        if (action.playerId !== this.state.trumpCaller) {
+            throw new OmiRuleError('WRONG_TRUMP_CALLER', `Player ${action.playerId} cannot select trump`);
+        }
+
+        const result = this.selectTrump(action.suit);
+        return [createEvent(EVENT.TRUMP_SELECTED, {
+            playerId: action.playerId,
+            suit: result.trump,
+        })];
+    }
+
+    #dispatchPlayCard(action) {
+        if (!Number.isInteger(action.playerId)) {
+            throw new OmiRuleError('INVALID_PLAYER', 'PLAY_CARD requires an integer playerId');
+        }
+
+        const hand = this.state.hands[action.playerId];
+        if (!Array.isArray(hand)) {
+            throw new OmiRuleError('INVALID_PLAYER', `Invalid player ${action.playerId}`);
+        }
+
+        const index = this.#resolveActionCardIndex(hand, action);
+        const result = this.playCard(action.playerId, index);
+        const events = [createEvent(EVENT.CARD_PLAYED, {
+            playerId: result.playerIndex,
+            card: result.card,
+            cardId: cardId(result.card),
+            trickComplete: result.trickComplete,
+            nextPlayer: result.nextPlayer,
+        })];
+
+        if (result.trickComplete) {
+            const preview = this.peekCurrentTrickResult();
+            events.push(createEvent(EVENT.TRICK_READY, {
+                winner: preview.winner,
+                winningCard: preview.winningCard,
+                leadSuit: preview.leadSuit,
+                plays: this.state.currentTrick.map(play => ({
+                    player: play.player,
+                    card: play.card,
+                })),
+            }));
+        }
+
+        return events;
+    }
+
+    #resolveActionCardIndex(hand, action) {
+        if (typeof action.cardId === 'string') {
+            const index = hand.findIndex(card => cardId(card) === action.cardId);
+            if (index < 0) {
+                throw new OmiRuleError('INVALID_CARD', `Card ${action.cardId} is not in the player's hand`);
+            }
+            return index;
+        }
+
+        if (Number.isInteger(action.cardIndex)) {
+            return action.cardIndex;
+        }
+
+        throw new OmiRuleError('INVALID_CARD', 'PLAY_CARD requires cardId or cardIndex');
+    }
+
+    #dispatchCompleteTrick() {
+        const result = this.completeTrick();
+        return [createEvent(EVENT.TRICK_COMPLETED, {
+            trickNum: result.trickNum,
+            winner: result.winner,
+            winningCard: result.winningCard,
+            leadSuit: result.leadSuit,
+            team: result.team,
+            handPlayComplete: result.handComplete,
+        })];
+    }
+
+    #dispatchScoreHand() {
+        const result = this.scoreCurrentHand();
+        const events = [];
+
+        if (result.tied) {
+            events.push(createEvent(EVENT.HAND_TIED, {
+                nextCarryTokens: result.nextCarryTokens,
+            }));
+        } else {
+            events.push(createEvent(EVENT.TOKENS_AWARDED, {
+                winnerTeam: result.winnerTeam,
+                baseTokens: result.baseTokens,
+                carryAwarded: result.carryAwarded,
+                tokensAwarded: result.tokensAwarded,
+                isDefense: result.isDefense,
+                isKapothi: result.isKapothi,
+                tokens: result.tokens,
+            }));
+        }
+
+        events.push(createEvent(EVENT.HAND_COMPLETED, {
+            handNumber: this.state.handNumber,
+            teamTricks: [...this.state.teamTricks],
+            callerTeam: result.callerTeam,
+            result,
+        }));
+
+        if (result.matchOver) {
+            const winnerTeam = this.state.tokens[0] >= this.state.matchTokenTarget ? 0 : 1;
+            events.push(createEvent(EVENT.MATCH_COMPLETED, {
+                winnerTeam,
+                tokens: [...this.state.tokens],
+                targetTokens: this.state.matchTokenTarget,
+            }));
+        }
+
+        return events;
+    }
+
+    #dispatchResetMatch(action) {
+        const dealerIndex = action.dealerIndex ?? this.initialDealerIndex;
+        this.resetMatch({ dealerIndex });
+        return [createEvent(EVENT.MATCH_RESET, {
+            dealerIndex: this.state.dealerIndex,
+            targetTokens: this.state.matchTokenTarget,
+        })];
     }
 
     resetMatch({ dealerIndex = this.initialDealerIndex } = {}) {
@@ -85,8 +327,8 @@ export class GameEngine {
 
     /**
      * Deal the next batch of four cards during either deal phase.
-     * The caller controls *when* this method runs; therefore animation timing
-     * stays outside the engine.
+     * The caller controls when this method runs; animation timing stays out of
+     * the engine.
      */
     dealNextBatch() {
         if (![PHASE.DEAL_INITIAL, PHASE.DEAL_REMAINING].includes(this.state.phase)) {

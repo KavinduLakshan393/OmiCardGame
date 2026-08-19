@@ -2,17 +2,27 @@
 
 A browser-based implementation of the Sri Lankan partnership trick-taking card game Omi.
 
-## Batch 1 status
+## Batch 2 status
 
-The project now uses a pure rules/state engine under `src/engine/` while retaining the current prototype UI.
+The current branch now contains the single-player architecture defined by implementation-plan Patches 3, 4, and 5 on top of the Batch 1 standard-rules engine.
 
-Implemented standard-mode foundations:
+Implemented foundations:
+
+- explicit engine actions and serializable domain events;
+- stable `cardId`-based play commands suitable for future networking;
+- detached engine state snapshots for controller/AI consumers;
+- dedicated DOM-independent `SinglePlayerController`;
+- controller-owned human/AI turn sequencing and animation-completion hooks;
+- extracted Casual and Smart AI strategies;
+- fair AI knowledge views that expose no hidden teammate/opponent hands;
+- public card tracking, partner awareness, and known-void-suit inference;
+- the existing prototype UI now talks to the controller instead of directly running AI/game-flow transitions.
+
+Standard Omi foundations from Batch 1 remain unchanged:
 
 - 32-card deck: 7 through Ace in all four suits;
-- four fixed partnership players;
 - counter-clockwise deal and play;
-- dealer-right trump selection after the first four cards;
-- mandatory trump selection;
+- dealer-right compulsory trump selection after the first four cards;
 - second four-card batch after trump;
 - standard follow-suit and trick rules;
 - 10-token match target;
@@ -21,17 +31,20 @@ Implemented standard-mode foundations:
 - Kapothi: 3 tokens;
 - 4-4: no immediate award, with carry to the next decisive hand.
 
-Joker and pass-trump are intentionally not part of Standard Mode.
+Joker and pass-trump remain intentionally excluded from Standard Mode.
 
 ## Project structure
 
 ```text
-index.html              Current prototype UI / game entry
-script.js               Legacy presentation/controller and AI timing
-src/engine/             Pure Omi rules and state engine
-tests/                  Node built-in test suite
-docs/                   Batch/audit documentation
-style.css                Reserved for later CSS extraction
+index.html                       Current prototype UI / game entry
+script.js                        Presentation, audio, DOM rendering, animation hooks
+src/engine/                      Authoritative Omi rules, actions, events and state
+src/controllers/                 Single-player orchestration
+src/ai/                          Fair-information AI strategies and knowledge model
+scripts/check.mjs                Cross-platform project syntax check
+tests/                           Node built-in automated tests
+docs/                            Batch/audit documentation
+style.css                        Reserved for later CSS extraction
 ```
 
 ## Requirements
@@ -41,15 +54,13 @@ style.css                Reserved for later CSS extraction
 
 ## Run locally
 
-Because `script.js` now uses native ES modules, serve the directory over HTTP instead of opening `index.html` directly with `file://`.
-
-For example:
+Serve the directory over HTTP instead of opening `index.html` with `file://`.
 
 ```bash
 python -m http.server 8000
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:8000/
@@ -63,7 +74,7 @@ No npm dependencies are required.
 npm test
 ```
 
-Optional syntax check:
+Run syntax checks across `script.js` and all `src/**/*.js` files:
 
 ```bash
 npm run check
@@ -71,4 +82,4 @@ npm run check
 
 ## Welcome / Main Menu
 
-The basic Welcome page is maintained separately by the user. Main Menu integration is scheduled for Patch 6. See `docs/welcome-routing-contract.md`.
+The basic Welcome page is maintained separately by the user. Main Menu integration remains scheduled for Patch 6, followed by the complete Tutorial in Patch 7. See `docs/welcome-routing-contract.md`.
