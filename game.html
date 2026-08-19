@@ -2,237 +2,226 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#07120D">
     <title>Omi — Play Solo</title>
     <meta name="description" content="Play the classic Sri Lankan partnership card game Omi against fair AI opponents.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-
 </head>
-<body>
+<body class="game-page">
+<a class="skip-link" href="#p0-hand">Skip to your hand</a>
 
-<!-- ====================================================== -->
-<!--  MAIN GAME BOARD                                        -->
-<!-- ====================================================== -->
-<div id="game-board">
+<main id="game-board" aria-label="Omi single-player table">
+    <header id="header-area" class="game-hud">
+        <a class="hud-brand" href="main-menu.html" aria-label="Return to main menu">
+            <span class="hud-brand-mark" aria-hidden="true">♠♥♦♣</span>
+            <span class="hud-brand-name">Omi</span>
+        </a>
 
-    <!-- HEADER -->
-    <div id="header-area">
-        <div class="score-box">
-            <span class="score-label">NS (You &amp; Partner)</span>
-            <span class="score-value">
-                <span id="ns-tricks">0</span> Tricks |
-                <span id="ns-tokens">0</span> Tokens (Target 10)
-            </span>
-        </div>
-
-        <div id="status-banner">Click "Start Game" to begin!</div>
-
-        <div class="score-box">
-            <span class="score-label">EW (Opponents)</span>
-            <span class="score-value">
-                <span id="ew-tricks">0</span> Tricks |
-                <span id="ew-tokens">0</span> Tokens (Target 10)
-            </span>
-        </div>
+        <section class="score-hud" aria-label="Match score">
+            <div class="team-score team-score--ns">
+                <span class="score-label">Your Team</span>
+                <strong id="ns-tokens" class="token-score">0</strong>
+                <span class="trick-score"><span id="ns-tricks">0</span> tricks</span>
+            </div>
+            <div class="score-divider" aria-hidden="true">
+                <span>TO</span><strong>10</strong>
+            </div>
+            <div class="team-score team-score--ew">
+                <span class="score-label">Opponents</span>
+                <strong id="ew-tokens" class="token-score">0</strong>
+                <span class="trick-score"><span id="ew-tricks">0</span> tricks</span>
+            </div>
+        </section>
 
         <div class="header-controls">
-            <button class="icon-btn" id="mute-btn" title="Toggle sound">🔊</button>
-            <button class="icon-btn" id="log-toggle-btn" title="Toggle game log">📋</button>
+            <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" disabled>
+                <span aria-hidden="true">↶</span>
+            </button>
+            <button class="icon-btn" id="mute-btn" type="button" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+            <a class="icon-btn icon-link" href="main-menu.html" title="Main menu" aria-label="Main menu">☰</a>
         </div>
-    </div>
+    </header>
 
-    <!-- WEST COLUMN -->
-    <div id="west-area">
-        <div id="player-1" class="player-area">
-            <div class="player-label">
-                West
-                <span class="turn-badge hidden">...</span>
-            </div>
-            <div id="p1-hand" class="hand-v"></div>
-        </div>
-    </div>
+    <section class="table-shell">
+        <div class="felt-table" aria-label="Omi card table">
+            <div class="felt-grain" aria-hidden="true"></div>
+            <div class="table-ring" aria-hidden="true"></div>
 
-    <!-- CENTER COLUMN -->
-    <div id="center-area">
-
-        <!-- North -->
-        <div id="player-north">
-            <div id="player-2" class="player-area">
-                <div class="player-label">
-                    Partner (North)
-                    <span class="turn-badge hidden">...</span>
+            <!-- NORTH / PARTNER -->
+            <section id="player-2" class="player-seat seat-north" aria-label="North, your AI partner">
+                <div class="player-identity">
+                    <div class="player-avatar" aria-hidden="true">N</div>
+                    <div class="player-copy">
+                        <span class="player-name">Nimal</span>
+                        <span class="player-role">Partner · AI</span>
+                    </div>
+                    <span class="card-count" id="p2-count">0</span>
                 </div>
-            </div>
-            <div id="p2-hand" class="hand-h"></div>
-        </div>
+                <span class="turn-badge hidden">Thinking…</span>
+                <div id="p2-hand" class="opponent-hand hand-north" aria-label="Nimal's cards"></div>
+            </section>
 
-        <!-- Trick Table + History -->
-        <div id="center-middle">
-            <div id="trick-table">
-                <div class="trick-table-bg"></div>
-
-                <!-- Deck pile (visible during dealing) -->
-                <div id="deck-pile">
-                    <div class="deck-card" style="transform:rotate(-3deg) translate(-2px,2px)"></div>
-                    <div class="deck-card" style="transform:rotate(1deg)"></div>
-                    <div class="deck-card"></div>
+            <!-- WEST / OPPONENT -->
+            <section id="player-1" class="player-seat seat-west" aria-label="West AI opponent">
+                <div class="player-identity player-identity--vertical">
+                    <div class="player-avatar" aria-hidden="true">K</div>
+                    <div class="player-copy">
+                        <span class="player-name">Kasun</span>
+                        <span class="player-role">Opponent · AI</span>
+                    </div>
+                    <span class="card-count" id="p1-count">0</span>
                 </div>
+                <span class="turn-badge hidden">Thinking…</span>
+                <div id="p1-hand" class="opponent-hand hand-west" aria-label="Kasun's cards"></div>
+            </section>
 
-                <!-- Card slots -->
-                <div class="trick-slot" id="trick-north"></div>
-                <div class="trick-slot" id="trick-south"></div>
-                <div class="trick-slot" id="trick-west"></div>
-                <div class="trick-slot" id="trick-east"></div>
-
-                <!-- Trump badge -->
-                <div id="trump-badge">
-                    <span class="t-label">TRUMP</span>
-                    <span class="t-suit" id="trump-icon">–</span>
-                    <span class="t-caller" id="trump-caller"></span>
+            <!-- EAST / OPPONENT -->
+            <section id="player-3" class="player-seat seat-east" aria-label="East AI opponent">
+                <div class="player-identity player-identity--vertical">
+                    <div class="player-avatar" aria-hidden="true">A</div>
+                    <div class="player-copy">
+                        <span class="player-name">Amal</span>
+                        <span class="player-role">Opponent · AI</span>
+                    </div>
+                    <span class="card-count" id="p3-count">0</span>
                 </div>
-            </div>
+                <span class="turn-badge hidden">Thinking…</span>
+                <div id="p3-hand" class="opponent-hand hand-east" aria-label="Amal's cards"></div>
+            </section>
 
-            <!-- Trick history strip -->
-            <div id="trick-history-panel">
-                <span class="history-empty">No tricks yet</span>
-            </div>
-        </div>
+            <!-- CENTER TRICK ZONE -->
+            <section id="center-middle" class="trick-zone" aria-label="Current trick">
+                <div class="trick-zone-heading">Current Trick</div>
+                <div id="trick-table">
+                    <div id="deck-pile" aria-label="Deck">
+                        <div class="deck-card"></div>
+                        <div class="deck-card"></div>
+                        <div class="deck-card"></div>
+                    </div>
 
-        <!-- South (You) -->
-        <div id="player-south">
-            <div id="p0-hand" class="hand-h"></div>
-            <div id="player-0" class="player-area">
-                <div class="player-label">
-                    You (South)
-                    <span class="turn-badge hidden">Your Turn!</span>
+                    <div class="trick-slot" id="trick-north" data-seat="north"></div>
+                    <div class="trick-slot" id="trick-south" data-seat="south"></div>
+                    <div class="trick-slot" id="trick-west" data-seat="west"></div>
+                    <div class="trick-slot" id="trick-east" data-seat="east"></div>
+
+                    <div id="trump-badge" aria-live="polite">
+                        <span class="t-label">Trump</span>
+                        <span class="t-suit" id="trump-icon">–</span>
+                        <span class="t-caller" id="trump-caller">Not selected</span>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <!-- SOUTH / HUMAN -->
+            <section id="player-0" class="player-seat seat-south" aria-label="You, South">
+                <div id="p0-hand" class="human-hand" aria-label="Your cards"></div>
+                <div class="player-identity player-identity--human">
+                    <div class="player-avatar player-avatar--human" aria-hidden="true">Y</div>
+                    <div class="player-copy">
+                        <span class="player-name">You</span>
+                        <span class="player-role">South · Your Team</span>
+                    </div>
+                    <span class="card-count" id="p0-count">0</span>
+                </div>
+                <span class="turn-badge hidden">Your Turn</span>
+            </section>
         </div>
+    </section>
 
-    </div>
-
-    <!-- EAST COLUMN -->
-    <div id="east-area">
-        <div id="player-3" class="player-area">
-            <div class="player-label">
-                East
-                <span class="turn-badge hidden">...</span>
-            </div>
-            <div id="p3-hand" class="hand-v"></div>
+    <section id="status-area" aria-live="polite">
+        <div id="status-banner">Ready for a match?</div>
+        <div class="game-actions">
+            <button id="start-btn" class="btn btn-primary" type="button">Start Game</button>
+            <button id="sort-btn" class="btn btn-secondary" type="button" hidden>Sort Hand</button>
+            <button id="show-stats-btn" class="btn btn-secondary" type="button" hidden>Stats</button>
         </div>
-    </div>
+    </section>
+</main>
 
-    <!-- FOOTER -->
-    <div id="footer-area">
-        <button id="start-btn" class="btn btn-primary">Start Game</button>
-        <button id="sort-btn" class="btn btn-secondary" style="display:none">♠♥♦♣ Sort</button>
-        <button id="show-stats-btn" class="btn btn-secondary" style="display:none">📊 Stats</button>
+<!-- Previous trick: compact, player-requested history rather than a permanent debug strip. -->
+<div id="previous-trick-popover" class="previous-trick-popover hidden" role="dialog" aria-modal="false" aria-labelledby="previous-trick-title">
+    <div class="previous-trick-head">
+        <div>
+            <span class="eyebrow">Previous Trick</span>
+            <strong id="previous-trick-title">No completed trick</strong>
+        </div>
+        <button id="previous-trick-close" class="popover-close" type="button" aria-label="Close previous trick">×</button>
     </div>
-
-</div><!-- /#game-board -->
-
-<!-- ====================================================== -->
-<!--  LOG SIDEBAR (outside grid, fixed right)               -->
-<!-- ====================================================== -->
-<div id="log-sidebar" class="collapsed">
-    <div id="log-sidebar-header">
-        📋 GAME LOG
-        <button id="log-close-btn" title="Close log">✕</button>
+    <div id="trick-history-panel" class="previous-trick-cards">
+        <span class="history-empty">No tricks yet</span>
     </div>
-    <ul id="game-log-list"></ul>
 </div>
 
-<!-- ====================================================== -->
-<!--  TRICK WIN FLOATING BANNER                             -->
-<!-- ====================================================== -->
-<div id="trick-win-overlay" class="hidden"></div>
+<div id="trick-win-overlay" class="hidden" aria-live="polite"></div>
 
-<!-- ====================================================== -->
-<!--  ROUND RESULT OVERLAY                                  -->
-<!-- ====================================================== -->
-<div id="round-overlay" class="hidden">
-    <div id="round-overlay-box">
-        <div id="round-overlay-msg"></div>
-    </div>
+<div id="round-overlay" class="hidden" role="status" aria-live="polite">
+    <div id="round-overlay-box"><div id="round-overlay-msg"></div></div>
 </div>
 
-<!-- ====================================================== -->
-<!--  MATCH WIN OVERLAY                                     -->
-<!-- ====================================================== -->
-<div id="match-win-overlay" class="hidden">
+<div id="match-win-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="match-winner-text">
     <div id="match-win-box">
+        <div class="eyebrow">Match Complete</div>
         <div id="match-winner-text"></div>
         <div id="match-stats-text"></div>
         <div class="match-win-actions">
-            <button id="match-play-again-btn" class="btn btn-primary">Play Again</button>
-            <button id="show-stats-btn-match" class="btn btn-secondary">📊 View Stats</button>
+            <button id="match-play-again-btn" class="btn btn-primary" type="button">Play Again</button>
+            <button id="show-stats-btn-match" class="btn btn-secondary" type="button">View Stats</button>
+            <a href="main-menu.html" class="btn btn-secondary btn-link">Main Menu</a>
         </div>
     </div>
 </div>
 
-<!-- ====================================================== -->
-<!--  TRUMP SELECTION MODAL                                 -->
-<!-- ====================================================== -->
-<div id="modal-overlay" class="hidden">
+<div id="modal-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="trump-title">
     <div id="modal-box">
-        <h2>Choose Trump Suit</h2>
-        <p>Your first 4 cards — choose the trump suit:</p>
+        <div class="eyebrow">First Four Cards</div>
+        <h2 id="trump-title">Choose Trump</h2>
+        <p>Select the suit that will outrank all other suits this hand.</p>
         <div id="hand-preview"></div>
         <div id="trump-opts">
-            <button class="suit-btn red-s" data-suit="Hearts"><span class="ss">♥</span> Hearts</button>
-            <button class="suit-btn red-s" data-suit="Diamonds"><span class="ss">♦</span> Diamonds</button>
-            <button class="suit-btn blk-s" data-suit="Clubs"><span class="ss">♣</span> Clubs</button>
-            <button class="suit-btn blk-s" data-suit="Spades"><span class="ss">♠</span> Spades</button>
+            <button class="suit-btn red-s" data-suit="Hearts" type="button"><span class="ss">♥</span><span>Hearts</span></button>
+            <button class="suit-btn red-s" data-suit="Diamonds" type="button"><span class="ss">♦</span><span>Diamonds</span></button>
+            <button class="suit-btn blk-s" data-suit="Clubs" type="button"><span class="ss">♣</span><span>Clubs</span></button>
+            <button class="suit-btn blk-s" data-suit="Spades" type="button"><span class="ss">♠</span><span>Spades</span></button>
         </div>
     </div>
 </div>
 
-<!-- ====================================================== -->
-<!--  STATS MODAL                                           -->
-<!-- ====================================================== -->
-<div id="stats-modal" class="hidden">
+<div id="stats-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="stats-title">
     <div id="stats-box">
-        <h2>📊 Game Statistics</h2>
-
+        <div class="eyebrow">Match Performance</div>
+        <h2 id="stats-title">Game Statistics</h2>
         <div class="stats-section">
             <h3>Tricks Won</h3>
-            <table class="stats-table">
-                <tbody id="stats-tricks-body"></tbody>
-            </table>
+            <table class="stats-table"><tbody id="stats-tricks-body"></tbody></table>
         </div>
-
         <div class="stats-section">
             <div class="team-stats-grid">
                 <div class="team-stat-box">
-                    <div class="team-name">NS — You &amp; Partner</div>
-                    <div class="team-stat-row">Rounds Won <span id="stats-ns-wins">0</span></div>
-                    <div class="team-stat-row">Kaputhis <span id="stats-ns-kaputhis">0</span></div>
+                    <div class="team-name">Your Team</div>
+                    <div class="team-stat-row">Hands Won <span id="stats-ns-wins">0</span></div>
+                    <div class="team-stat-row">Kapothis <span id="stats-ns-kaputhis">0</span></div>
                     <div class="team-stat-row">Defends <span id="stats-ns-defends">0</span></div>
                 </div>
                 <div class="team-stat-box">
-                    <div class="team-name">EW — Opponents</div>
-                    <div class="team-stat-row">Rounds Won <span id="stats-ew-wins">0</span></div>
-                    <div class="team-stat-row">Kaputhis <span id="stats-ew-kaputhis">0</span></div>
+                    <div class="team-name">Opponents</div>
+                    <div class="team-stat-row">Hands Won <span id="stats-ew-wins">0</span></div>
+                    <div class="team-stat-row">Kapothis <span id="stats-ew-kaputhis">0</span></div>
                     <div class="team-stat-row">Defends <span id="stats-ew-defends">0</span></div>
                 </div>
             </div>
         </div>
-
-        <div class="stats-section">
-            <h3>⭐ Most Valuable Player</h3>
-            <div class="mvp-box" id="stats-mvp">—</div>
-        </div>
-
-        <div class="stats-close-wrap">
-            <button id="stats-close-btn" class="btn btn-secondary">Close</button>
-        </div>
+        <div class="stats-section"><div class="mvp-box">Most tricks: <strong id="stats-mvp">—</strong></div></div>
+        <div class="stats-close-wrap"><button id="stats-close-btn" class="btn btn-secondary" type="button">Close</button></div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<!-- Kept as a hidden instrumentation sink for existing diagnostic logging. -->
+<ul id="game-log-list" hidden aria-hidden="true"></ul>
+
 <script type="module" src="script.js"></script>
 </body>
 </html>

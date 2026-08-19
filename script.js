@@ -20,6 +20,8 @@ import {
 } from './src/engine/index.js';
 import { AI_DIFFICULTY } from './src/ai/AIPlayer.js';
 import { SinglePlayerController } from './src/controllers/SinglePlayerController.js';
+import { createCardElement, createMiniCardElement } from './src/ui/cardRenderer.js';
+import { animateCardPlay, animateTrickCollection, markDealtCards, pulseWinningCard } from './src/ui/animations.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -43,6 +45,7 @@ const controller = new SinglePlayerController({
         beforeAITrump: handleBeforeAITrump,
         beforeAITurn: handleBeforeAITurn,
         onHumanTurn: handleHumanTurn,
+        afterCardPlayed: handleAfterCardPlayed,
         beforeTrickComplete: handleBeforeTrickComplete,
         afterTrickComplete: handleAfterTrickComplete,
         beforeHandScore: handleBeforeHandScore,
@@ -66,6 +69,8 @@ const runtime = {
         trumpsCalled: [0, 0, 0, 0],
     },
     gameLog: [],
+    selectedCardIndex: null,
+    pendingPlayRect: null,
 };
 
 /* ===== SOUND ENGINE (Web Audio API — procedural, no files) ===== */
@@ -135,6 +140,11 @@ function updateScoreboard() {
     document.getElementById('ew-tricks').textContent = state.teamTricks[1];
     document.getElementById('ns-tokens').textContent = state.tokens[0];
     document.getElementById('ew-tokens').textContent = state.tokens[1];
+
+    state.hands.forEach((hand, playerId) => {
+        const counter = document.getElementById(`p${playerId}-count`);
+        if (counter) counter.textContent = hand.length;
+    });
 }
 
 function updateTrumpBadge() {
@@ -209,89 +219,60 @@ function refreshUI() {
 
 /* ===== CARD RENDERING ===== */
 function buildCard(card, faceDown) {
-    const div = document.createElement('div');
-
-    if (faceDown) {
-        div.className = 'card face-down';
-        return div;
-    }
-
-    const sym = suitSymbol(card.suit);
-    div.className = 'card ' + (isRed(card.suit) ? 'red' : 'black');
-
-    const tl = document.createElement('div'); tl.className = 'card-tl';
-    tl.innerHTML = `<span class="cr">${card.rank}</span><span class="cs">${sym}</span>`;
-
-    const center = document.createElement('div');
-    if (card.rank === 'A') {
-        center.className = 'card-center ace-big';
-        center.textContent = sym;
-    } else if (['K', 'Q', 'J'].includes(card.rank)) {
-        center.className = 'card-center court';
-        const icons = { K: '♔', Q: '♕', J: '♘' };
-        center.innerHTML = `<span class="court-icon">${icons[card.rank]}</span><span class="court-sub">${sym}</span>`;
-    } else {
-        center.className = 'card-center pip-center';
-        center.textContent = sym;
-    }
-
-    const br = document.createElement('div'); br.className = 'card-br';
-    br.innerHTML = `<span class="cr">${card.rank}</span><span class="cs">${sym}</span>`;
-
-    div.appendChild(tl); div.appendChild(center); div.appendChild(br);
-    return div;
+    return createCardElement(card, { faceDown });
 }
 
 /* ===== HAND RENDERING ===== */
 function renderHand(playerId) {
-    const isAI       = playerId !== 0;
+    const isAI = playerId !== 0;
     const isVertical = playerId === 1 || playerId === 3;
     const containerId = ['p0-hand', 'p1-hand', 'p2-hand', 'p3-hand'][playerId];
-    const container   = document.getElementById(containerId);
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
 
     const cards = state.hands[playerId];
-    const n     = cards.length;
+    const count = cards.length;
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
 
     cards.forEach((card, index) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'card-wrapper';
+        wrapper.dataset.cardIndex = String(index);
 
         const cardEl = buildCard(card, isAI);
         wrapper.appendChild(cardEl);
 
         if (isVertical) {
-            // Side players — vertical overlap, face-down
-            if (index > 0) wrapper.style.marginTop = '-68px';
+            if (index > 0) wrapper.style.marginTop = '-48px';
             wrapper.style.zIndex = String(index + 1);
-            wrapper.style.cursor = 'default';
-
         } else if (playerId === 2) {
-            // North partner — horizontal overlap, face-down
-            if (index > 0) wrapper.style.marginLeft = '-40px';
+            if (index > 0) wrapper.style.marginLeft = '-30px';
             wrapper.style.zIndex = String(index + 1);
-            wrapper.style.cursor = 'default';
-
         } else {
-            // South (human) — fanned arc, face-up, clickable
-            const mid   = (n - 1) / 2;
-            const angle = (index - mid) * 5;
-            const yArc  = Math.pow(index - mid, 2) * 2.5;
-            wrapper.style.transform      = `rotate(${angle}deg) translateY(${yArc}px)`;
-            wrapper.style.transformOrigin = 'bottom center';
-            if (index > 0) wrapper.style.marginLeft = '-38px';
+            const mid = (count - 1) / 2;
+            const angle = Math.max(-15, Math.min(15, (index - mid) * 4.2));
+            const yArc = Math.pow(index - mid, 2) * 1.7;
+            const restingTransform = `rotate(${angle}deg) translateY(${yArc}px)`;
+            wrapper.style.transform = restingTransform;
+            if (index > 0) wrapper.style.marginLeft = 'clamp(-42px, -3vw, -26px)';
             wrapper.style.zIndex = String(index + 1);
+
+            if (runtime.selectedCardIndex === index) {
+                cardEl.classList.add('card-selected');
+                wrapper.style.transform = 'rotate(0deg) translateY(-24px) scale(1.04)';
+                wrapper.style.zIndex = '240';
+            }
 
             wrapper.addEventListener('mouseenter', () => {
-                if (!cardEl.classList.contains('card-invalid')) {
-                    wrapper.style.transform = `rotate(0deg) translateY(-28px) scale(1.12)`;
-                    wrapper.style.zIndex    = '200';
-                }
+                if (coarsePointer || cardEl.classList.contains('card-invalid')) return;
+                wrapper.style.transform = 'rotate(0deg) translateY(-24px) scale(1.06)';
+                wrapper.style.zIndex = '220';
             });
             wrapper.addEventListener('mouseleave', () => {
-                wrapper.style.transform = `rotate(${angle}deg) translateY(${yArc}px)`;
-                wrapper.style.zIndex    = String(index + 1);
+                if (runtime.selectedCardIndex === index) return;
+                wrapper.style.transform = restingTransform;
+                wrapper.style.zIndex = String(index + 1);
             });
 
             wrapper.addEventListener('click', () => {
@@ -301,6 +282,16 @@ function renderHand(playerId) {
                     return;
                 }
                 if (!state.trump) return;
+
+                if (coarsePointer && runtime.selectedCardIndex !== index) {
+                    runtime.selectedCardIndex = index;
+                    renderHand(0);
+                    setStatus(`${card.rank} of ${card.suit} selected. Tap again to play.`);
+                    return;
+                }
+
+                runtime.pendingPlayRect = wrapper.getBoundingClientRect();
+                runtime.selectedCardIndex = null;
                 const ok = tryPlayCard(0, index);
                 if (!ok) {
                     Sound.play('invalid');
@@ -315,10 +306,10 @@ function renderHand(playerId) {
         container.appendChild(wrapper);
     });
 
-    // Apply highlights to human hand after render
-    if (playerId === 0) {
-        requestAnimationFrame(() => highlightValidCards());
-    }
+    const counter = document.getElementById(`p${playerId}-count`);
+    if (counter) counter.textContent = count;
+
+    if (playerId === 0) requestAnimationFrame(() => highlightValidCards());
 }
 
 function renderAllHands() { [0, 1, 2, 3].forEach(id => renderHand(id)); }
@@ -326,36 +317,22 @@ function renderAllHands() { [0, 1, 2, 3].forEach(id => renderHand(id)); }
 /* ===== TRICK HISTORY PANEL ===== */
 function updateTrickHistoryPanel() {
     const panel = document.getElementById('trick-history-panel');
+    const button = document.getElementById('previous-trick-btn');
+    const title = document.getElementById('previous-trick-title');
     if (!panel) return;
     panel.innerHTML = '';
 
-    const recent = state.trickHistory.slice(-3);
-    if (recent.length === 0) {
-        panel.innerHTML = '<span class="history-empty">No tricks yet</span>';
+    const previous = state.trickHistory.at(-1);
+    if (!previous) {
+        panel.innerHTML = '<span class="history-empty">No completed trick yet.</span>';
+        if (button) button.disabled = true;
+        if (title) title.textContent = 'No completed trick';
         return;
     }
 
-    recent.forEach(({ trickNum, plays, winner }) => {
-        const item  = document.createElement('div');
-        item.className = 'history-item';
-
-        const label = document.createElement('div');
-        label.className = 'history-label';
-        label.textContent = `Trick ${trickNum} → ${PLAYER_NAMES[winner]}`;
-
-        const mini = document.createElement('div');
-        mini.className = 'history-cards';
-        plays.forEach(({ card }) => {
-            const m = document.createElement('div');
-            m.className = 'mini-card ' + (isRed(card.suit) ? 'red' : 'black');
-            m.textContent = `${card.rank}${suitSymbol(card.suit)}`;
-            mini.appendChild(m);
-        });
-
-        item.appendChild(label);
-        item.appendChild(mini);
-        panel.appendChild(item);
-    });
+    if (button) button.disabled = false;
+    if (title) title.textContent = `Trick ${previous.trickNum} · ${PLAYER_NAMES[previous.winner]} won`;
+    previous.plays.forEach(({ card }) => panel.appendChild(createMiniCardElement(card)));
 }
 
 /* ===== GAME LOG ===== */
@@ -430,7 +407,9 @@ async function handleDealBatchAnimation({ event }) {
     runtime.dealing = true;
     Sound.play('card');
     renderHand(event.playerIndex);
-    await delay(220);
+    const container = document.getElementById(['p0-hand', 'p1-hand', 'p2-hand', 'p3-hand'][event.playerIndex]);
+    markDealtCards(container, event.cards.length, event.playerIndex);
+    await delay(460);
 }
 
 async function handleHumanTrumpRequired() {
@@ -462,23 +441,37 @@ async function handleHumanTurn() {
     highlightValidCards();
 }
 
+async function handleAfterCardPlayed({ event }) {
+    if (!event) return;
+    const slotMap = { 0: 'south', 1: 'west', 2: 'north', 3: 'east' };
+    const target = document.getElementById(`trick-${slotMap[event.playerId]}`);
+    await animateCardPlay({
+        card: event.card,
+        playerId: event.playerId,
+        targetElement: target,
+        sourceRect: event.playerId === 0 ? runtime.pendingPlayRect : null,
+    });
+    runtime.pendingPlayRect = null;
+}
+
 async function handleBeforeTrickComplete({ preview }) {
     runtime.processing = true;
     updateTurnBadges();
-    await delay(1000);
 
     const slotMap = { 0: 'south', 1: 'west', 2: 'north', 3: 'east' };
-    const winSlot = document.getElementById('trick-' + slotMap[preview.winner]);
-    if (winSlot) {
-        winSlot.classList.add('winner-flash');
-        setTimeout(() => winSlot.classList.remove('winner-flash'), 700);
-    }
+    const winningSlot = document.getElementById(`trick-${slotMap[preview.winner]}`);
+    await pulseWinningCard(winningSlot);
 
     const trickNum = state.trickHistory.length + 1;
     Sound.play('trick');
     appendLog(`${PLAYER_NAMES[preview.winner]} won trick #${trickNum}`, 'trick');
-    showTrickWinBanner(`${PLAYER_NAMES[preview.winner]} wins the trick!`);
-    await delay(950);
+    showTrickWinBanner(`${PLAYER_NAMES[preview.winner]} wins the trick`);
+    await delay(320);
+
+    await animateTrickCollection({
+        winnerId: preview.winner,
+        slotElements: ['north', 'east', 'south', 'west'].map(side => document.getElementById(`trick-${side}`)),
+    });
 }
 
 async function handleAfterTrickComplete({ event }) {
@@ -522,9 +515,10 @@ function startRound() {
 
     runtime.processing = false;
     runtime.dealing = true;
+    runtime.selectedCardIndex = null;
 
-    document.getElementById('start-btn').style.display = 'none';
-    document.getElementById('sort-btn').style.display = 'inline-block';
+    document.getElementById('start-btn').hidden = true;
+    document.getElementById('sort-btn').hidden = false;
 
     clearCardHighlights();
     updateTrickHistoryPanel();
@@ -668,9 +662,9 @@ function presentHandResult(result) {
     setTimeout(() => {
         const btn = document.getElementById('start-btn');
         btn.textContent = 'Next Hand';
-        btn.style.display = 'inline-block';
-        document.getElementById('sort-btn').style.display = 'none';
-        document.getElementById('show-stats-btn').style.display = 'inline-block';
+        btn.hidden = false;
+        document.getElementById('sort-btn').hidden = true;
+        document.getElementById('show-stats-btn').hidden = false;
     }, 2300);
 }
 
@@ -766,13 +760,14 @@ document.getElementById('mute-btn').addEventListener('click', () => {
     document.getElementById('mute-btn').textContent = runtime.muted ? '🔇' : '🔊';
 });
 
-// Log sidebar toggle
-document.getElementById('log-toggle-btn').addEventListener('click', () => {
-    const sidebar = document.getElementById('log-sidebar');
-    sidebar.classList.toggle('collapsed');
+// Previous trick popover
+const previousTrickPopover = document.getElementById('previous-trick-popover');
+document.getElementById('previous-trick-btn').addEventListener('click', () => {
+    updateTrickHistoryPanel();
+    previousTrickPopover.classList.toggle('hidden');
 });
-document.getElementById('log-close-btn').addEventListener('click', () => {
-    document.getElementById('log-sidebar').classList.add('collapsed');
+document.getElementById('previous-trick-close').addEventListener('click', () => {
+    previousTrickPopover.classList.add('hidden');
 });
 
 // Play again (match win)
@@ -792,11 +787,11 @@ document.getElementById('match-play-again-btn').addEventListener('click', () => 
             trumpsCalled: [0, 0, 0, 0],
         };
         document.getElementById('game-log-list').innerHTML = '';
-        document.getElementById('show-stats-btn').style.display = 'none';
+        document.getElementById('show-stats-btn').hidden = true;
         refreshUI();
         const btn = document.getElementById('start-btn');
         btn.textContent    = 'Start Game';
-        btn.style.display  = 'inline-block';
-        document.getElementById('sort-btn').style.display = 'none';
+        btn.hidden = false;
+        document.getElementById('sort-btn').hidden = true;
     }).catch(error => handleControllerError(error, 'Unable to reset the match.'));
 });

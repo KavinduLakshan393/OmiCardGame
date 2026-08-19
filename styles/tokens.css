@@ -45,3 +45,11 @@
     --card-width: 72px;
     --card-height: 108px;
 }
+
+:root {
+    /* Batch 4 semantic aliases used by the gameplay surface. */
+    --font-brand: var(--font-menu);
+    --color-text-primary: var(--card-white);
+    --ease-cine: var(--ease-cinematic);
+    --motion-medium: 420ms;
+}

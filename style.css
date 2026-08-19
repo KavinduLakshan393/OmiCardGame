@@ -1,8 +1,8 @@
-/* Gameplay stylesheet entry point.
- * Batch 3 introduces shared design tokens and typography while preserving the
- * existing table layout. The full responsive table redesign begins in Patch 9.
- */
 @import url('./styles/tokens.css');
 @import url('./styles/base.css');
 @import url('./styles/typography.css');
-@import url('./styles/game-legacy.css');
+@import url('./styles/table.css');
+@import url('./styles/cards.css');
+@import url('./styles/animations.css');
+
+.hidden { display: none !important; }
