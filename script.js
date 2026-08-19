@@ -1,10 +1,11 @@
 /* ============================================================
-   OMI CARD GAME — Legacy presentation/controller layer
+   OMI CARD GAME — Single Player v1 presentation integration
 
-   Batch 1 architecture note:
-   - Standard Omi rules and state transitions now live in src/engine/.
-   - This file remains responsible for DOM rendering, audio, AI timing,
-     animations, and existing prototype controls until later patches.
+   Architecture boundary:
+   - Standard Omi rules/state live in src/engine/.
+   - Single-player sequencing lives in src/controllers/.
+   - This module binds browser UI, audio, persistence and animations to those
+     layers without mutating authoritative rule state directly.
    ============================================================ */
 
 import {
@@ -32,6 +33,7 @@ import { loadSettings, saveSettings } from './src/storage/settings.js';
 import { animateCardPlay, animateTrickCollection, markDealtCards, pulseWinningCard } from './src/ui/animations.js';
 import { createCardElement, createMiniCardElement } from './src/ui/cardRenderer.js';
 import { buildHumanHint } from './src/ui/hints.js';
+import { activateFocusTrap, deactivateFocusTrap } from './src/ui/focusTrap.js';
 import { configureMotion, wait as delay } from './src/ui/motion.js';
 import { handResultView, matchResultView } from './src/ui/results.js';
 
@@ -110,7 +112,20 @@ const runtime = {
     gameLog: [],
     selectedCardIndex: null,
     pendingPlayRect: null,
+    humanSortEnabled: false,
 };
+
+function openModalSurface(element, { initialFocus = null, onEscape = null } = {}) {
+    if (!element) return;
+    element.classList.remove('hidden');
+    activateFocusTrap(element, { initialFocus, onEscape });
+}
+
+function closeModalSurface(element, { restoreFocus = true } = {}) {
+    if (!element) return;
+    deactivateFocusTrap(element, { restoreFocus });
+    element.classList.add('hidden');
+}
 
 function persistActiveMatch() {
     if ([PHASE.IDLE, PHASE.MATCH_COMPLETE].includes(state.phase)) {
@@ -192,11 +207,15 @@ function highlightValidCards() {
     if (!container) return;
 
     const legalIndices = new Set(game.getLegalCardIndices(0));
-    container.querySelectorAll('.card-wrapper').forEach((wrapper, index) => {
+    container.querySelectorAll('.card-wrapper').forEach(wrapper => {
         const cardEl = wrapper.querySelector('.card');
         if (!cardEl) return;
+        const cardIndex = Number(wrapper.dataset.cardIndex);
+        const legal = legalIndices.has(cardIndex);
         cardEl.classList.remove('card-valid', 'card-invalid');
-        cardEl.classList.add(legalIndices.has(index) ? 'card-valid' : 'card-invalid');
+        cardEl.classList.add(legal ? 'card-valid' : 'card-invalid');
+        if ('disabled' in wrapper) wrapper.disabled = !legal;
+        wrapper.setAttribute('aria-disabled', String(!legal));
     });
 }
 
@@ -221,6 +240,17 @@ function buildCard(card, faceDown) {
 }
 
 /* ===== HAND RENDERING ===== */
+function humanCardEntries(cards) {
+    const entries = cards.map((card, cardIndex) => ({ card, cardIndex }));
+    if (!runtime.humanSortEnabled) return entries;
+
+    const suitOrder = { Hearts: 0, Diamonds: 1, Clubs: 2, Spades: 3 };
+    return entries.sort((a, b) => {
+        const suitDelta = suitOrder[a.card.suit] - suitOrder[b.card.suit];
+        return suitDelta !== 0 ? suitDelta : rankValue(b.card.rank) - rankValue(a.card.rank);
+    });
+}
+
 function renderHand(playerId) {
     const isAI = playerId !== 0;
     const isVertical = playerId === 1 || playerId === 3;
@@ -232,31 +262,42 @@ function renderHand(playerId) {
     const cards = state.hands[playerId];
     const count = cards.length;
     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    const entries = playerId === 0
+        ? humanCardEntries(cards)
+        : cards.map((card, cardIndex) => ({ card, cardIndex }));
 
-    cards.forEach((card, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'card-wrapper';
-        wrapper.dataset.cardIndex = String(index);
+    entries.forEach(({ card, cardIndex }, visualIndex) => {
+        const wrapper = document.createElement(playerId === 0 ? 'button' : 'div');
+        wrapper.className = `card-wrapper${playerId === 0 ? ' card-control' : ''}`;
+        wrapper.dataset.cardIndex = String(cardIndex);
+
+        if (playerId === 0) {
+            wrapper.type = 'button';
+            wrapper.disabled = true;
+            wrapper.setAttribute('aria-disabled', 'true');
+            wrapper.setAttribute('aria-label', `${card.rank} of ${card.suit}`);
+        }
 
         const cardEl = buildCard(card, isAI);
+        if (playerId === 0) cardEl.setAttribute('aria-hidden', 'true');
         wrapper.appendChild(cardEl);
 
         if (isVertical) {
-            if (index > 0) wrapper.style.marginTop = '-48px';
-            wrapper.style.zIndex = String(index + 1);
+            if (visualIndex > 0) wrapper.style.marginTop = '-48px';
+            wrapper.style.zIndex = String(visualIndex + 1);
         } else if (playerId === 2) {
-            if (index > 0) wrapper.style.marginLeft = '-30px';
-            wrapper.style.zIndex = String(index + 1);
+            if (visualIndex > 0) wrapper.style.marginLeft = '-30px';
+            wrapper.style.zIndex = String(visualIndex + 1);
         } else {
             const mid = (count - 1) / 2;
-            const angle = Math.max(-15, Math.min(15, (index - mid) * 4.2));
-            const yArc = Math.pow(index - mid, 2) * 1.7;
+            const angle = Math.max(-15, Math.min(15, (visualIndex - mid) * 4.2));
+            const yArc = Math.pow(visualIndex - mid, 2) * 1.7;
             const restingTransform = `rotate(${angle}deg) translateY(${yArc}px)`;
             wrapper.style.transform = restingTransform;
-            if (index > 0) wrapper.style.marginLeft = 'clamp(-42px, -3vw, -26px)';
-            wrapper.style.zIndex = String(index + 1);
+            if (visualIndex > 0) wrapper.style.marginLeft = 'clamp(-42px, -3vw, -26px)';
+            wrapper.style.zIndex = String(visualIndex + 1);
 
-            if (runtime.selectedCardIndex === index) {
+            if (runtime.selectedCardIndex === cardIndex) {
                 cardEl.classList.add('card-selected');
                 wrapper.style.transform = 'rotate(0deg) translateY(-24px) scale(1.04)';
                 wrapper.style.zIndex = '240';
@@ -268,9 +309,9 @@ function renderHand(playerId) {
                 wrapper.style.zIndex = '220';
             });
             wrapper.addEventListener('mouseleave', () => {
-                if (runtime.selectedCardIndex === index) return;
+                if (runtime.selectedCardIndex === cardIndex) return;
                 wrapper.style.transform = restingTransform;
-                wrapper.style.zIndex = String(index + 1);
+                wrapper.style.zIndex = String(visualIndex + 1);
             });
 
             wrapper.addEventListener('click', () => {
@@ -281,8 +322,8 @@ function renderHand(playerId) {
                 }
                 if (!state.trump) return;
 
-                if (coarsePointer && runtime.selectedCardIndex !== index) {
-                    runtime.selectedCardIndex = index;
+                if (coarsePointer && runtime.selectedCardIndex !== cardIndex) {
+                    runtime.selectedCardIndex = cardIndex;
                     renderHand(0);
                     setStatus(`${card.rank} of ${card.suit} selected. Tap again to play.`);
                     return;
@@ -290,7 +331,7 @@ function renderHand(playerId) {
 
                 runtime.pendingPlayRect = wrapper.getBoundingClientRect();
                 runtime.selectedCardIndex = null;
-                const ok = tryPlayCard(0, index);
+                const ok = tryPlayCard(0, cardIndex);
                 if (!ok) {
                     Sound.play('invalid');
                     cardEl.classList.remove('shake');
@@ -502,15 +543,10 @@ async function handleAfterHandScored({ event }) {
 
 /* ===== HAND SORT ===== */
 function sortHand() {
-    const suitOrder = { Hearts: 0, Diamonds: 1, Clubs: 2, Spades: 3 };
-    state.hands[0].sort((a, b) => {
-        const sd = suitOrder[a.suit] - suitOrder[b.suit];
-        return sd !== 0 ? sd : rankValue(b.rank) - rankValue(a.rank);
-    });
+    runtime.humanSortEnabled = true;
     renderHand(0);
     highlightValidCards();
     appendLog('Hand sorted by suit & rank', 'info');
-    persistActiveMatch();
 }
 
 /* ===== GAME FLOW ===== */
@@ -577,13 +613,14 @@ function showTrumpModal() {
         preview.appendChild(w);
     });
 
-    document.getElementById('modal-overlay').classList.remove('hidden');
+    const overlay = document.getElementById('modal-overlay');
+    openModalSurface(overlay, { initialFocus: overlay.querySelector('.suit-btn') });
 }
 
 document.querySelectorAll('.suit-btn').forEach(btn => {
     btn.addEventListener('click', event => {
         Sound.init();
-        document.getElementById('modal-overlay').classList.add('hidden');
+        closeModalSurface(document.getElementById('modal-overlay'));
         confirmTrump(event.currentTarget.dataset.suit);
     });
 });
@@ -663,7 +700,8 @@ function presentHandResult(result) {
     document.getElementById('hand-result-tokens').textContent = view.tokenAward;
     document.getElementById('hand-result-carry').textContent = view.carry;
     document.getElementById('hand-result-dealer').textContent = view.nextDealer;
-    document.getElementById('hand-result-overlay').classList.remove('hidden');
+    const handOverlay = document.getElementById('hand-result-overlay');
+    openModalSurface(handOverlay, { initialFocus: document.getElementById('hand-next-btn') });
 
     if (result.isKapothi) fireConfetti();
 }
@@ -675,7 +713,7 @@ function showMatchWin() {
     clearSavedGame();
     appendLog(`🏆 MATCH WON by ${view.title}!`, 'match');
 
-    document.getElementById('hand-result-overlay').classList.add('hidden');
+    closeModalSurface(document.getElementById('hand-result-overlay'), { restoreFocus: false });
     document.getElementById('match-result-eyebrow').textContent = view.eyebrow;
     document.getElementById('match-winner-text').textContent = view.title;
     document.getElementById('match-result-summary').textContent = view.winnerTeam === 0
@@ -685,7 +723,8 @@ function showMatchWin() {
     document.getElementById('match-hands-played').textContent = view.handsPlayed;
     document.getElementById('match-kapothis').textContent = `${view.kapothis[0]} – ${view.kapothis[1]}`;
     document.getElementById('match-duration').textContent = view.duration;
-    document.getElementById('match-win-overlay').classList.remove('hidden');
+    const matchOverlay = document.getElementById('match-win-overlay');
+    openModalSurface(matchOverlay, { initialFocus: document.getElementById('match-play-again-btn') });
 
     if (view.winnerTeam === 0) fireConfetti();
     return true;
@@ -730,12 +769,27 @@ function showStatsPanel() {
     document.getElementById('stats-mvp').textContent =
         `${PLAYER_NAMES[mvpIdx]} (${runtime.stats.tricksWonByPlayer[mvpIdx]} tricks)`;
 
-    document.getElementById('stats-modal').classList.remove('hidden');
+    const statsModal = document.getElementById('stats-modal');
+    openModalSurface(statsModal, {
+        initialFocus: document.getElementById('stats-close-btn'),
+        onEscape: closeStatsPanel,
+    });
+}
+
+function closeStatsPanel() {
+    closeModalSurface(document.getElementById('stats-modal'));
+}
+
+function updateMuteButton() {
+    const button = document.getElementById('mute-btn');
+    if (!button) return;
+    button.textContent = runtime.muted ? '🔇' : '🔊';
+    button.setAttribute('aria-label', runtime.muted ? 'Enable sound' : 'Mute sound');
+    button.title = runtime.muted ? 'Enable sound' : 'Mute sound';
 }
 
 /* Reflect menu-selected sound preference before the first interaction. */
-const initialMuteButton = document.getElementById('mute-btn');
-if (initialMuteButton) initialMuteButton.textContent = runtime.muted ? '🔇' : '🔊';
+updateMuteButton();
 Sound.setEnabled(!runtime.muted);
 
 /* ===== EVENT LISTENERS ===== */
@@ -754,9 +808,7 @@ document.getElementById('show-stats-btn').addEventListener('click', () => {
 document.getElementById('show-stats-btn-match').addEventListener('click', () => {
     showStatsPanel();
 });
-document.getElementById('stats-close-btn').addEventListener('click', () => {
-    document.getElementById('stats-modal').classList.add('hidden');
-});
+document.getElementById('stats-close-btn').addEventListener('click', closeStatsPanel);
 
 // Mute toggle
 document.getElementById('mute-btn').addEventListener('click', () => {
@@ -764,36 +816,62 @@ document.getElementById('mute-btn').addEventListener('click', () => {
     runtime.muted = !runtime.muted;
     Sound.setEnabled(!runtime.muted);
     settings = saveSettings({ ...settings, sound: !runtime.muted });
-    document.getElementById('mute-btn').textContent = runtime.muted ? '🔇' : '🔊';
+    updateMuteButton();
 });
 
-// Fair-information hint popover
+// Fair-information helper popovers remain non-modal but move focus to their
+// close control so keyboard/screen-reader users immediately enter the surface.
 const hintPopover = document.getElementById('hint-popover');
-document.getElementById('hint-btn').addEventListener('click', () => {
-    previousTrickPopover?.classList.add('hidden');
+const hintButton = document.getElementById('hint-btn');
+const previousTrickPopover = document.getElementById('previous-trick-popover');
+const previousTrickButton = document.getElementById('previous-trick-btn');
+let helperReturnFocus = null;
+
+function closeHelperPopover(popover, trigger, { restoreFocus = true } = {}) {
+    if (!popover || popover.classList.contains('hidden')) return;
+    popover.classList.add('hidden');
+    trigger?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && helperReturnFocus instanceof HTMLElement) {
+        helperReturnFocus.focus({ preventScroll: true });
+    }
+    helperReturnFocus = null;
+}
+
+function openHelperPopover(popover, trigger, closeButton) {
+    helperReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : trigger;
+    popover.classList.remove('hidden');
+    trigger?.setAttribute('aria-expanded', 'true');
+    closeButton?.focus({ preventScroll: true });
+}
+
+hintButton.addEventListener('click', () => {
+    closeHelperPopover(previousTrickPopover, previousTrickButton, { restoreFocus: false });
     const hint = buildHumanHint(controller.getSnapshot(), 0);
     document.getElementById('hint-title').textContent = hint.title;
     document.getElementById('hint-message').textContent = hint.message;
-    hintPopover.classList.remove('hidden');
+    openHelperPopover(hintPopover, hintButton, document.getElementById('hint-close'));
 });
 document.getElementById('hint-close').addEventListener('click', () => {
-    hintPopover.classList.add('hidden');
+    closeHelperPopover(hintPopover, hintButton);
 });
 
 // Previous trick popover
-const previousTrickPopover = document.getElementById('previous-trick-popover');
-document.getElementById('previous-trick-btn').addEventListener('click', () => {
-    hintPopover.classList.add('hidden');
+previousTrickButton.addEventListener('click', () => {
+    if (!previousTrickPopover.classList.contains('hidden')) {
+        closeHelperPopover(previousTrickPopover, previousTrickButton);
+        return;
+    }
+    closeHelperPopover(hintPopover, hintButton, { restoreFocus: false });
     updateTrickHistoryPanel();
-    previousTrickPopover.classList.toggle('hidden');
+    openHelperPopover(previousTrickPopover, previousTrickButton, document.getElementById('previous-trick-close'));
 });
 document.getElementById('previous-trick-close').addEventListener('click', () => {
-    previousTrickPopover.classList.add('hidden');
+    closeHelperPopover(previousTrickPopover, previousTrickButton);
 });
 
 // Hand result actions
 function closeHandResultAndStartNext() {
-    document.getElementById('hand-result-overlay').classList.add('hidden');
+    closeModalSurface(document.getElementById('hand-result-overlay'), { restoreFocus: false });
     startRound();
 }
 document.getElementById('hand-next-btn').addEventListener('click', closeHandResultAndStartNext);
@@ -802,7 +880,7 @@ document.getElementById('hand-stats-btn').addEventListener('click', showStatsPan
 // Play again (match win)
 document.getElementById('match-play-again-btn').addEventListener('click', () => {
     Sound.init();
-    document.getElementById('match-win-overlay').classList.add('hidden');
+    closeModalSurface(document.getElementById('match-win-overlay'), { restoreFocus: false });
 
     controller.resetMatch().then(() => {
         runtime.processing = false;
@@ -824,8 +902,11 @@ document.getElementById('match-play-again-btn').addEventListener('click', () => 
 // Close non-modal helper popovers without interrupting the match.
 document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
-    hintPopover.classList.add('hidden');
-    previousTrickPopover.classList.add('hidden');
+    if (!hintPopover.classList.contains('hidden')) {
+        closeHelperPopover(hintPopover, hintButton);
+    } else if (!previousTrickPopover.classList.contains('hidden')) {
+        closeHelperPopover(previousTrickPopover, previousTrickButton);
+    }
 });
 
 window.addEventListener('pagehide', persistActiveMatch);

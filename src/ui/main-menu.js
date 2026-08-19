@@ -1,5 +1,7 @@
 import { loadSettings, saveSettings } from '../storage/settings.js';
 import { loadGame } from '../storage/saveGame.js';
+import { activateFocusTrap, deactivateFocusTrap } from './focusTrap.js';
+import { configureMotion } from './motion.js';
 
 const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
 
@@ -7,6 +9,7 @@ const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsButton = document.getElementById('settings-button');
 const settingsMenuButton = document.getElementById('settings-menu-button');
 const settingsClose = document.getElementById('settings-close');
+const settingsPanel = settingsBackdrop.querySelector('.settings-panel');
 const difficultySetting = document.getElementById('difficulty-setting');
 const soundSetting = document.getElementById('sound-setting');
 const animationSpeedSetting = document.getElementById('animation-speed-setting');
@@ -35,6 +38,7 @@ function syncContinueMatch() {
 
 function syncControls() {
     preferences = loadSettings();
+    configureMotion(preferences);
     difficultySetting.value = preferences.difficulty;
     soundSetting.value = preferences.sound ? 'on' : 'off';
     animationSpeedSetting.value = preferences.animationSpeed;
@@ -49,12 +53,16 @@ function syncControls() {
 function openSettings() {
     lastFocusedElement = document.activeElement;
     settingsBackdrop.hidden = false;
-    settingsClose.focus();
+    activateFocusTrap(settingsPanel, {
+        initialFocus: settingsClose,
+        onEscape: closeSettings,
+    });
 }
 
 function closeSettings() {
+    deactivateFocusTrap(settingsPanel, { restoreFocus: false });
     settingsBackdrop.hidden = true;
-    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
+    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus({ preventScroll: true });
 }
 
 function commitPreferences() {
@@ -64,6 +72,7 @@ function commitPreferences() {
         animationSpeed: animationSpeedSetting.value,
         reducedMotion: reducedMotionSetting.value,
     });
+    configureMotion(preferences);
     updatePlayLink();
 }
 
@@ -79,9 +88,6 @@ settingsBackdrop.addEventListener('click', event => {
     if (event.target === settingsBackdrop) closeSettings();
 });
 
-document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !settingsBackdrop.hidden) closeSettings();
-});
 
 window.addEventListener('pageshow', syncControls);
 syncControls();

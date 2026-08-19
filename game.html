@@ -38,10 +38,10 @@
         </section>
 
         <div class="header-controls">
-            <button class="icon-btn" id="hint-btn" type="button" title="Get a fair-play hint" aria-label="Get a hint">
+            <button class="icon-btn" id="hint-btn" type="button" title="Get a fair-play hint" aria-label="Get a hint" aria-controls="hint-popover" aria-expanded="false">
                 <span aria-hidden="true">?</span>
             </button>
-            <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" disabled>
+            <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" aria-controls="previous-trick-popover" aria-expanded="false" disabled>
                 <span aria-hidden="true">↶</span>
             </button>
             <button class="icon-btn" id="mute-btn" type="button" title="Toggle sound" aria-label="Toggle sound">🔊</button>
@@ -121,7 +121,7 @@
 
             <!-- SOUTH / HUMAN -->
             <section id="player-0" class="player-seat seat-south" aria-label="You, South">
-                <div id="p0-hand" class="human-hand" aria-label="Your cards"></div>
+                <div id="p0-hand" class="human-hand" role="group" aria-label="Your cards" tabindex="-1"></div>
                 <div class="player-identity player-identity--human">
                     <div class="player-avatar player-avatar--human" aria-hidden="true">Y</div>
                     <div class="player-copy">
@@ -235,7 +235,11 @@
         <h2 id="stats-title">Game Statistics</h2>
         <div class="stats-section">
             <h3>Tricks Won</h3>
-            <table class="stats-table"><tbody id="stats-tricks-body"></tbody></table>
+            <table class="stats-table">
+                <caption class="visually-hidden">Tricks won by player</caption>
+                <thead class="visually-hidden"><tr><th scope="col">Player</th><th scope="col">Tricks</th><th scope="col">Share</th></tr></thead>
+                <tbody id="stats-tricks-body"></tbody>
+            </table>
         </div>
         <div class="stats-section">
             <div class="team-stats-grid">

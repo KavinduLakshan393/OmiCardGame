@@ -1,0 +1,1674 @@
+diff --git a/README.md b/README.md
+index 1c5658e..6548a20 100644
+--- a/README.md
++++ b/README.md
+@@ -2,42 +2,30 @@
+ 
+ A browser-based implementation of the Sri Lankan partnership trick-taking card game Omi.
+ 
+-## Batch 5 status
++## Single Player v1.0.0
+ 
+-The current branch contains implementation-plan Patches **0–15**.
++This repository contains the completed **Single Player v1** scope from implementation-plan Patches **0–19**. The release focuses on accurate Standard Omi rules, a reusable authoritative game engine, fair AI, a polished responsive interface, accessibility, persistence and release-grade regression coverage.
+ 
+-### Product experience
++### Included in v1
+ 
+-- neutral repository entry (`index.html`) routes to the Main Menu until the user-owned Welcome page is added;
+-- Main Menu provides Play Solo, Continue Match, Tutorial and persistent Settings;
+-- complete 11-step Standard Omi tutorial;
++- Standard 32-card Omi rules using ranks 7 through Ace;
++- compulsory trump selection after the first four cards;
++- counter-clockwise deal and play;
++- caller/defender/Kapothi scoring, 4–4 carry and 10-token match target;
++- pure authoritative `GameEngine` with action/event contracts and serializable sessions;
++- one human player plus three fair-information AI players;
++- Casual and Smart AI difficulties;
++- Main Menu and complete 11-step Tutorial;
+ - responsive premium game table and production card renderer;
+-- presentation-only deal/play/trick animations;
+-- fair-play Hint system and richer Previous Trick view;
+-- dedicated hand-result and match-result dialogs.
++- presentation-only deal, play and trick-collection animations;
++- persistent sound, speed, motion and AI settings;
++- save/continue match across supported game phases;
++- fair Hint system and Previous Trick viewer;
++- hand-result and match-result flows with statistics;
++- keyboard, touch, focus-management, reduced-motion and forced-colors hardening;
++- deterministic full-match regression tests and static release QA.
+ 
+-### Persistent settings and save/resume
+-
+-- Smart/Casual AI difficulty;
+-- Sound On/Off;
+-- Relaxed/Normal/Fast presentation speed;
+-- System/Reduced/Full motion preference;
+-- versioned local save record;
+-- strict engine-session validation and card rehydration;
+-- conditional Continue Match menu action;
+-- resume support across deal, trump, trick-play, hand-scoring and hand-complete boundaries;
+-- corrupt/completed saves are discarded safely.
+-
+-### Architecture
+-
+-- 32-card Standard Omi rules with compulsory trump, 4–4 carry and 10-token target;
+-- pure authoritative `GameEngine` with serializable actions/events/state;
+-- DOM-independent `SinglePlayerController`;
+-- Casual and Smart AI constrained to fair/public information;
+-- dedicated `AudioManager`, storage modules, motion configuration and UI helpers;
+-- rules engine remains free of DOM, audio, browser-storage and animation dependencies.
+-
+-Joker and pass-trump remain intentionally excluded from Standard Mode.
++Joker, pass-trump and other house-rule variations remain intentionally excluded from Standard Mode.
+ 
+ ## Application routes
+ 
+@@ -47,10 +35,24 @@ user-owned welcome.html
+ main-menu.html
+    ├── tutorial.html
+    ├── game.html
+-   └── game.html?resume=1   (only when an active save exists)
++   └── game.html?resume=1   (only when a valid active save exists)
++```
++
++The repository currently keeps `index.html` as a neutral compatibility entry that redirects to `main-menu.html`. The final cinematic Welcome page is maintained separately by the user and only needs to preserve the `main-menu.html` routing contract. See `docs/welcome-routing-contract.md`.
++
++## Architecture
++
++```text
++UI / Presentation
++       ↓
++SinglePlayerController
++       ↓
++GameEngine
++       ↑
++Fair AI strategies
+ ```
+ 
+-The final Welcome page is maintained separately by the user. See `docs/welcome-routing-contract.md`.
++The authoritative engine remains independent from DOM, CSS, Web Audio, browser storage and presentation timers. Game rules are therefore testable without a browser and remain suitable for a future server-authoritative multiplayer controller.
+ 
+ ## Project structure
+ 
+@@ -58,46 +60,60 @@ The final Welcome page is maintained separately by the user. See `docs/welcome-r
+ index.html                       Neutral fallback entry → Main Menu
+ main-menu.html                   Navigation, Continue Match and Settings
+ tutorial.html                    11-step Standard Omi tutorial
+-game.html                        Single-player table
+-script.js                        Gameplay presentation integration
++game.html                        Single-player game table
++script.js                        Single Player v1 presentation integration
+ style.css                        Gameplay stylesheet entry point
+-styles/                          Shared tokens, table/cards/animation/results CSS
++styles/                          Shared design, cards, table, animation and accessibility CSS
+ src/engine/                      Authoritative rules/actions/events/state/session
+ src/controllers/                 Single-player orchestration
+ src/ai/                          Fair-information AI strategies
+ src/audio/                       Browser presentation audio
+ src/storage/                     Settings and active-match persistence
+-src/ui/                          UI rendering, hints, results and motion helpers
+-scripts/check.mjs                Cross-platform JS syntax check
+-tests/                           Node built-in automated tests
+-docs/                            Batch/audit documentation
++src/ui/                          Rendering, motion, focus, hints and result helpers
++scripts/check.mjs                JavaScript syntax verification
++scripts/qa.mjs                   Static release/architecture QA
++tests/                           Node automated regression suite
++docs/release-qa.md               Required manual browser/device QA
++docs/single-player-v1-release.md Release scope and boundary
+ ```
+ 
+ ## Requirements
+ 
+ - Modern browser with ES module support
+-- Node.js 20+ for tests
++- Node.js 20+ for automated verification
+ 
+ ## Run locally
+ 
++Serve the project over HTTP rather than opening the HTML files directly:
++
+ ```bash
+ python -m http.server 8000
+ ```
+ 
+-Open `http://localhost:8000/`.
++Then open:
+ 
+-## Verification
++```text
++http://localhost:8000/
++```
++
++## Release verification
++
++Run the complete automated release gate:
+ 
+ ```bash
+-npm test
+-npm run check
++npm run verify
++```
++
++This runs syntax checks, the full Node test suite and static release QA.
++
++Manual browser/device verification is also required before merging or tagging a release. Follow:
++
++```text
++docs/release-qa.md
+ ```
+ 
+-## Next development boundary
++## Release boundary
+ 
+-Batch 5 completes feature Patches 12–15. The remaining release-hardening work is:
++**Single Player v1 is feature-complete.** Do not add further single-player features during release hardening unless they fix a verified defect.
+ 
+-- Patch 16 — expanded automated regression coverage;
+-- Patch 17 — responsive/accessibility QA;
+-- Patch 18 — release-candidate freeze and fixes;
+-- Patch 19 — Single Player v1 release.
++The next planned product phase is online multiplayer. Multiplayer should reuse the existing rules model with a server-authoritative controller/transport rather than duplicating or rewriting Omi rules in the browser.
+diff --git a/docs/batch-6-notes.md b/docs/batch-6-notes.md
+new file mode 100644
+index 0000000..fb765b5
+--- /dev/null
++++ b/docs/batch-6-notes.md
+@@ -0,0 +1,44 @@
++# Batch 6 Notes — Patches 16–19
++
++Batch 6 is the release-hardening batch for Omi Single Player v1. It intentionally adds no new game mode or rules variation.
++
++## Patch 16 — Automated Test Expansion
++
++- Added deterministic full-match regression simulation across 100 seeds.
++- Added engine session round-trip coverage across every resumable phase boundary.
++- Added release accessibility/static-contract tests.
++- Added `scripts/qa.mjs` for local asset references, duplicate IDs, dialog labelling, DOM-ID contracts, architecture purity and release metadata.
++- Added `npm run verify` as the single release verification command.
++
++## Patch 17 — Responsive and Accessibility QA
++
++- Human playing cards are native keyboard-focusable buttons.
++- Illegal cards are disabled at the control level, not only visually dimmed.
++- The human-hand skip-link target is programmatically focusable.
++- Trump, Statistics, hand-result, match-result and Main Menu Settings dialogs use a reusable stack-aware focus trap.
++- Hint and Previous Trick popovers move focus into the opened surface and restore it to the trigger.
++- Modal focus works correctly when Statistics is opened above a result dialog.
++- Motion preferences now apply consistently to Main Menu, Tutorial and gameplay.
++- Explicit Full Motion can override the device preference; Reduce Motion always suppresses non-essential transitions.
++- Added forced-colors focus treatment and keyboard focus styling for playing cards.
++- Added short-height scrolling fallbacks for Main Menu and Tutorial layouts.
++- Added an accessible caption/header structure to the statistics table.
++
++## Patch 18 — Release Candidate Hardening
++
++- Presentation-only hand sorting no longer mutates `GameEngine.state.hands`.
++- Stable engine card indices are preserved even when the human hand is visually sorted.
++- Mute control now exposes a state-appropriate accessible name.
++- Removed prototype/foundation wording from the release-facing menu and integration header.
++- Release verification now checks that engine/controller/AI boundaries remain free of browser dependencies.
++
++## Patch 19 — Single Player v1
++
++- Project version set to `1.0.0`.
++- README updated for the Single Player v1 release boundary.
++- Added release and QA documentation.
++- Welcome page remains intentionally user-owned; `index.html` continues to be a neutral compatibility entry that routes to `main-menu.html` until the final Welcome page replaces it.
++
++## Architecture invariant
++
++The authoritative Omi engine remains synchronous and independent of DOM, CSS, audio, local storage, browser timers and animation APIs. This remains the required foundation for future server-authoritative multiplayer.
+diff --git a/docs/release-qa.md b/docs/release-qa.md
+new file mode 100644
+index 0000000..f285015
+--- /dev/null
++++ b/docs/release-qa.md
+@@ -0,0 +1,113 @@
++# Omi Single Player v1 — Release QA
++
++This document separates **automated release gates** from **manual browser/device verification**.
++
++## Automated release gate
++
++Run:
++
++```bash
++npm run verify
++```
++
++The command must complete successfully and performs:
++
++1. JavaScript syntax verification.
++2. Full Node test suite.
++3. Static release QA.
++
++Automated coverage includes:
++
++- 32-card deck integrity and deterministic shuffle;
++- legal move / follow-suit enforcement;
++- trump and trick resolution;
++- scoring, Kapothi, carry and 10-token match completion;
++- action/event contracts;
++- fair-information AI boundaries;
++- single-player controller flow;
++- save/session validation and restore boundaries;
++- 100 deterministic complete-match simulations;
++- tutorial rule consistency;
++- playing-card rendering contracts;
++- persistent settings, hints and result-view contracts;
++- HTML local-reference checks and duplicate-ID checks;
++- literal JavaScript DOM-ID checks against their owning page;
++- accessibility contracts for keyboard cards, focus traps and helper popovers;
++- engine/controller/AI browser-dependency boundary checks;
++- Single Player v1 release metadata.
++
++## Manual browser QA required before merge/tag
++
++Serve the repository over HTTP:
++
++```bash
++python -m http.server 8000
++```
++
++Then verify the following in a normal browser.
++
++### Desktop — 1440×900 or similar
++
++- Main Menu loads without clipping.
++- Settings opens, traps Tab/Shift+Tab and restores focus when closed.
++- Tutorial completes all 11 steps with mouse and keyboard.
++- Start a solo match and complete at least one full hand.
++- Human cards are playable with keyboard Enter/Space when legal.
++- Illegal cards cannot receive an actionable play.
++- Trump selection traps focus inside its mandatory modal.
++- Hint and Previous Trick return focus to their trigger when closed.
++- Hand Result and Match Result dialogs receive focus correctly.
++- Statistics can open above a result dialog and return focus correctly when closed.
++- No blocking console errors occur.
++
++### Responsive widths
++
++Check approximately:
++
++- 1280×720 desktop/laptop;
++- 1024×768 tablet landscape;
++- 768×1024 tablet portrait;
++- 390×844 mobile portrait;
++- 844×390 mobile landscape.
++
++Confirm:
++
++- no clipped actionable controls;
++- cards remain readable and tappable;
++- current trick remains visible;
++- score, trump and status remain understandable;
++- Main Menu and Tutorial can scroll on short viewports;
++- result dialogs remain within the viewport and scroll internally when required.
++
++### Touch interaction
++
++On a coarse-pointer device/emulation:
++
++- first tap selects a legal human card;
++- second tap plays it;
++- illegal cards remain disabled;
++- selection never changes authoritative card identity after visual sorting.
++
++### Motion settings
++
++Verify all three settings:
++
++- **Use device setting** follows `prefers-reduced-motion`;
++- **Reduce motion** suppresses non-essential motion on Main Menu, Tutorial and gameplay;
++- **Full motion** enables presentation motion even when the device preference is reduced.
++
++### Persistence
++
++- Start a match, leave during initial deal/trump/play, then use Continue Match.
++- Resume during an in-progress trick.
++- Resume after a completed hand.
++- Corrupt/invalid save data is discarded safely.
++- Completed match does not leave Continue Match available.
++
++## Release decision
++
++Single Player v1 is ready to merge/tag only when:
++
++- `npm run verify` passes;
++- the manual browser QA above is completed without a release-blocking defect;
++- the final user-owned Welcome page integration, when added, still routes to `main-menu.html` and does not import game logic.
+diff --git a/docs/single-player-v1-release.md b/docs/single-player-v1-release.md
+new file mode 100644
+index 0000000..ed4f8fb
+--- /dev/null
++++ b/docs/single-player-v1-release.md
+@@ -0,0 +1,57 @@
++# Omi Single Player v1.0.0
++
++## Release scope
++
++Single Player v1 delivers the complete offline/local solo experience planned in Patches 0–19:
++
++- Standard 32-card Omi rules;
++- compulsory trump after the first four cards;
++- counter-clockwise deal/play;
++- correct trick resolution and standard token scoring;
++- 10-token match target and 4–4 carry;
++- pure authoritative rules engine;
++- action/event architecture;
++- one human + three fair-information AI players;
++- Casual and Smart AI modes;
++- Main Menu and 11-step Tutorial;
++- responsive game table and production card renderer;
++- deal/play/trick animations;
++- persistent settings and synthesized browser audio;
++- save/continue match;
++- fair hints and Previous Trick;
++- hand/match result screens and statistics;
++- keyboard/touch/reduced-motion accessibility hardening;
++- expanded deterministic regression and release QA tooling.
++
++## Entry route
++
++The repository currently uses:
++
++```text
++index.html → main-menu.html
++```
++
++This is intentional. The cinematic Welcome page is user-owned and can replace the neutral `index.html` entry later, provided its final action routes to `main-menu.html`.
++
++## Standard Mode exclusions
++
++The following remain intentionally outside Single Player v1 Standard Mode:
++
++- Joker;
++- pass-trump;
++- custom scoring;
++- alternative deck sizes;
++- online multiplayer;
++- accounts/rankings/social features.
++
++## Verification
++
++```bash
++npm run verify
++```
++
++Manual device/browser QA remains required before release tagging. See `docs/release-qa.md`.
++
++## Multiplayer readiness
++
++The release keeps rules/state independent from DOM, audio, persistence and presentation timing. Future online multiplayer should place a server-authoritative transport/controller above the same rules model rather than rewriting Omi rules in the browser.
+diff --git a/game.html b/game.html
+index 3af9933..c9abd53 100644
+--- a/game.html
++++ b/game.html
+@@ -38,10 +38,10 @@
+         </section>
+ 
+         <div class="header-controls">
+-            <button class="icon-btn" id="hint-btn" type="button" title="Get a fair-play hint" aria-label="Get a hint">
++            <button class="icon-btn" id="hint-btn" type="button" title="Get a fair-play hint" aria-label="Get a hint" aria-controls="hint-popover" aria-expanded="false">
+                 <span aria-hidden="true">?</span>
+             </button>
+-            <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" disabled>
++            <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" aria-controls="previous-trick-popover" aria-expanded="false" disabled>
+                 <span aria-hidden="true">↶</span>
+             </button>
+             <button class="icon-btn" id="mute-btn" type="button" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+@@ -121,7 +121,7 @@
+ 
+             <!-- SOUTH / HUMAN -->
+             <section id="player-0" class="player-seat seat-south" aria-label="You, South">
+-                <div id="p0-hand" class="human-hand" aria-label="Your cards"></div>
++                <div id="p0-hand" class="human-hand" role="group" aria-label="Your cards" tabindex="-1"></div>
+                 <div class="player-identity player-identity--human">
+                     <div class="player-avatar player-avatar--human" aria-hidden="true">Y</div>
+                     <div class="player-copy">
+@@ -235,7 +235,11 @@
+         <h2 id="stats-title">Game Statistics</h2>
+         <div class="stats-section">
+             <h3>Tricks Won</h3>
+-            <table class="stats-table"><tbody id="stats-tricks-body"></tbody></table>
++            <table class="stats-table">
++                <caption class="visually-hidden">Tricks won by player</caption>
++                <thead class="visually-hidden"><tr><th scope="col">Player</th><th scope="col">Tricks</th><th scope="col">Share</th></tr></thead>
++                <tbody id="stats-tricks-body"></tbody>
++            </table>
+         </div>
+         <div class="stats-section">
+             <div class="team-stats-grid">
+diff --git a/main-menu.html b/main-menu.html
+index f87840c..0b617d6 100644
+--- a/main-menu.html
++++ b/main-menu.html
+@@ -70,7 +70,7 @@
+         </section>
+ 
+         <footer class="menu-footer">
+-            <span>Single Player Foundation</span>
++            <span>Single Player v1</span>
+             <span>Standard Omi · 10 Token Match</span>
+         </footer>
+     </main>
+@@ -80,7 +80,7 @@
+             <div class="settings-header">
+                 <div>
+                     <h2 class="settings-title" id="settings-title">Settings</h2>
+-                    <p class="settings-copy">These options are applied when you start a solo match.</p>
++                    <p class="settings-copy">Preferences apply across the single-player experience.</p>
+                 </div>
+                 <button class="settings-close" id="settings-close" type="button" aria-label="Close settings">×</button>
+             </div>
+diff --git a/package.json b/package.json
+index b560bd2..3006b5a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,11 +1,13 @@
+ {
+   "name": "omi-card-game",
+-  "version": "0.1.0",
++  "version": "1.0.0",
+   "private": true,
+   "type": "module",
+   "scripts": {
+     "test": "node --test",
+-    "check": "node scripts/check.mjs"
++    "check": "node scripts/check.mjs",
++    "qa": "node scripts/qa.mjs",
++    "verify": "npm run check && npm test && npm run qa"
+   },
+   "engines": {
+     "node": ">=20"
+diff --git a/script.js b/script.js
+index af1023d..ae1d0a7 100644
+--- a/script.js
++++ b/script.js
+@@ -1,10 +1,11 @@
+ /* ============================================================
+-   OMI CARD GAME — Legacy presentation/controller layer
++   OMI CARD GAME — Single Player v1 presentation integration
+ 
+-   Batch 1 architecture note:
+-   - Standard Omi rules and state transitions now live in src/engine/.
+-   - This file remains responsible for DOM rendering, audio, AI timing,
+-     animations, and existing prototype controls until later patches.
++   Architecture boundary:
++   - Standard Omi rules/state live in src/engine/.
++   - Single-player sequencing lives in src/controllers/.
++   - This module binds browser UI, audio, persistence and animations to those
++     layers without mutating authoritative rule state directly.
+    ============================================================ */
+ 
+ import {
+@@ -32,6 +33,7 @@ import { loadSettings, saveSettings } from './src/storage/settings.js';
+ import { animateCardPlay, animateTrickCollection, markDealtCards, pulseWinningCard } from './src/ui/animations.js';
+ import { createCardElement, createMiniCardElement } from './src/ui/cardRenderer.js';
+ import { buildHumanHint } from './src/ui/hints.js';
++import { activateFocusTrap, deactivateFocusTrap } from './src/ui/focusTrap.js';
+ import { configureMotion, wait as delay } from './src/ui/motion.js';
+ import { handResultView, matchResultView } from './src/ui/results.js';
+ 
+@@ -110,8 +112,21 @@ const runtime = {
+     gameLog: [],
+     selectedCardIndex: null,
+     pendingPlayRect: null,
++    humanSortEnabled: false,
+ };
+ 
++function openModalSurface(element, { initialFocus = null, onEscape = null } = {}) {
++    if (!element) return;
++    element.classList.remove('hidden');
++    activateFocusTrap(element, { initialFocus, onEscape });
++}
++
++function closeModalSurface(element, { restoreFocus = true } = {}) {
++    if (!element) return;
++    deactivateFocusTrap(element, { restoreFocus });
++    element.classList.add('hidden');
++}
++
+ function persistActiveMatch() {
+     if ([PHASE.IDLE, PHASE.MATCH_COMPLETE].includes(state.phase)) {
+         if (state.phase === PHASE.MATCH_COMPLETE) clearSavedGame();
+@@ -192,11 +207,15 @@ function highlightValidCards() {
+     if (!container) return;
+ 
+     const legalIndices = new Set(game.getLegalCardIndices(0));
+-    container.querySelectorAll('.card-wrapper').forEach((wrapper, index) => {
++    container.querySelectorAll('.card-wrapper').forEach(wrapper => {
+         const cardEl = wrapper.querySelector('.card');
+         if (!cardEl) return;
++        const cardIndex = Number(wrapper.dataset.cardIndex);
++        const legal = legalIndices.has(cardIndex);
+         cardEl.classList.remove('card-valid', 'card-invalid');
+-        cardEl.classList.add(legalIndices.has(index) ? 'card-valid' : 'card-invalid');
++        cardEl.classList.add(legal ? 'card-valid' : 'card-invalid');
++        if ('disabled' in wrapper) wrapper.disabled = !legal;
++        wrapper.setAttribute('aria-disabled', String(!legal));
+     });
+ }
+ 
+@@ -221,6 +240,17 @@ function buildCard(card, faceDown) {
+ }
+ 
+ /* ===== HAND RENDERING ===== */
++function humanCardEntries(cards) {
++    const entries = cards.map((card, cardIndex) => ({ card, cardIndex }));
++    if (!runtime.humanSortEnabled) return entries;
++
++    const suitOrder = { Hearts: 0, Diamonds: 1, Clubs: 2, Spades: 3 };
++    return entries.sort((a, b) => {
++        const suitDelta = suitOrder[a.card.suit] - suitOrder[b.card.suit];
++        return suitDelta !== 0 ? suitDelta : rankValue(b.card.rank) - rankValue(a.card.rank);
++    });
++}
++
+ function renderHand(playerId) {
+     const isAI = playerId !== 0;
+     const isVertical = playerId === 1 || playerId === 3;
+@@ -232,31 +262,42 @@ function renderHand(playerId) {
+     const cards = state.hands[playerId];
+     const count = cards.length;
+     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+-
+-    cards.forEach((card, index) => {
+-        const wrapper = document.createElement('div');
+-        wrapper.className = 'card-wrapper';
+-        wrapper.dataset.cardIndex = String(index);
++    const entries = playerId === 0
++        ? humanCardEntries(cards)
++        : cards.map((card, cardIndex) => ({ card, cardIndex }));
++
++    entries.forEach(({ card, cardIndex }, visualIndex) => {
++        const wrapper = document.createElement(playerId === 0 ? 'button' : 'div');
++        wrapper.className = `card-wrapper${playerId === 0 ? ' card-control' : ''}`;
++        wrapper.dataset.cardIndex = String(cardIndex);
++
++        if (playerId === 0) {
++            wrapper.type = 'button';
++            wrapper.disabled = true;
++            wrapper.setAttribute('aria-disabled', 'true');
++            wrapper.setAttribute('aria-label', `${card.rank} of ${card.suit}`);
++        }
+ 
+         const cardEl = buildCard(card, isAI);
++        if (playerId === 0) cardEl.setAttribute('aria-hidden', 'true');
+         wrapper.appendChild(cardEl);
+ 
+         if (isVertical) {
+-            if (index > 0) wrapper.style.marginTop = '-48px';
+-            wrapper.style.zIndex = String(index + 1);
++            if (visualIndex > 0) wrapper.style.marginTop = '-48px';
++            wrapper.style.zIndex = String(visualIndex + 1);
+         } else if (playerId === 2) {
+-            if (index > 0) wrapper.style.marginLeft = '-30px';
+-            wrapper.style.zIndex = String(index + 1);
++            if (visualIndex > 0) wrapper.style.marginLeft = '-30px';
++            wrapper.style.zIndex = String(visualIndex + 1);
+         } else {
+             const mid = (count - 1) / 2;
+-            const angle = Math.max(-15, Math.min(15, (index - mid) * 4.2));
+-            const yArc = Math.pow(index - mid, 2) * 1.7;
++            const angle = Math.max(-15, Math.min(15, (visualIndex - mid) * 4.2));
++            const yArc = Math.pow(visualIndex - mid, 2) * 1.7;
+             const restingTransform = `rotate(${angle}deg) translateY(${yArc}px)`;
+             wrapper.style.transform = restingTransform;
+-            if (index > 0) wrapper.style.marginLeft = 'clamp(-42px, -3vw, -26px)';
+-            wrapper.style.zIndex = String(index + 1);
++            if (visualIndex > 0) wrapper.style.marginLeft = 'clamp(-42px, -3vw, -26px)';
++            wrapper.style.zIndex = String(visualIndex + 1);
+ 
+-            if (runtime.selectedCardIndex === index) {
++            if (runtime.selectedCardIndex === cardIndex) {
+                 cardEl.classList.add('card-selected');
+                 wrapper.style.transform = 'rotate(0deg) translateY(-24px) scale(1.04)';
+                 wrapper.style.zIndex = '240';
+@@ -268,9 +309,9 @@ function renderHand(playerId) {
+                 wrapper.style.zIndex = '220';
+             });
+             wrapper.addEventListener('mouseleave', () => {
+-                if (runtime.selectedCardIndex === index) return;
++                if (runtime.selectedCardIndex === cardIndex) return;
+                 wrapper.style.transform = restingTransform;
+-                wrapper.style.zIndex = String(index + 1);
++                wrapper.style.zIndex = String(visualIndex + 1);
+             });
+ 
+             wrapper.addEventListener('click', () => {
+@@ -281,8 +322,8 @@ function renderHand(playerId) {
+                 }
+                 if (!state.trump) return;
+ 
+-                if (coarsePointer && runtime.selectedCardIndex !== index) {
+-                    runtime.selectedCardIndex = index;
++                if (coarsePointer && runtime.selectedCardIndex !== cardIndex) {
++                    runtime.selectedCardIndex = cardIndex;
+                     renderHand(0);
+                     setStatus(`${card.rank} of ${card.suit} selected. Tap again to play.`);
+                     return;
+@@ -290,7 +331,7 @@ function renderHand(playerId) {
+ 
+                 runtime.pendingPlayRect = wrapper.getBoundingClientRect();
+                 runtime.selectedCardIndex = null;
+-                const ok = tryPlayCard(0, index);
++                const ok = tryPlayCard(0, cardIndex);
+                 if (!ok) {
+                     Sound.play('invalid');
+                     cardEl.classList.remove('shake');
+@@ -502,15 +543,10 @@ async function handleAfterHandScored({ event }) {
+ 
+ /* ===== HAND SORT ===== */
+ function sortHand() {
+-    const suitOrder = { Hearts: 0, Diamonds: 1, Clubs: 2, Spades: 3 };
+-    state.hands[0].sort((a, b) => {
+-        const sd = suitOrder[a.suit] - suitOrder[b.suit];
+-        return sd !== 0 ? sd : rankValue(b.rank) - rankValue(a.rank);
+-    });
++    runtime.humanSortEnabled = true;
+     renderHand(0);
+     highlightValidCards();
+     appendLog('Hand sorted by suit & rank', 'info');
+-    persistActiveMatch();
+ }
+ 
+ /* ===== GAME FLOW ===== */
+@@ -577,13 +613,14 @@ function showTrumpModal() {
+         preview.appendChild(w);
+     });
+ 
+-    document.getElementById('modal-overlay').classList.remove('hidden');
++    const overlay = document.getElementById('modal-overlay');
++    openModalSurface(overlay, { initialFocus: overlay.querySelector('.suit-btn') });
+ }
+ 
+ document.querySelectorAll('.suit-btn').forEach(btn => {
+     btn.addEventListener('click', event => {
+         Sound.init();
+-        document.getElementById('modal-overlay').classList.add('hidden');
++        closeModalSurface(document.getElementById('modal-overlay'));
+         confirmTrump(event.currentTarget.dataset.suit);
+     });
+ });
+@@ -663,7 +700,8 @@ function presentHandResult(result) {
+     document.getElementById('hand-result-tokens').textContent = view.tokenAward;
+     document.getElementById('hand-result-carry').textContent = view.carry;
+     document.getElementById('hand-result-dealer').textContent = view.nextDealer;
+-    document.getElementById('hand-result-overlay').classList.remove('hidden');
++    const handOverlay = document.getElementById('hand-result-overlay');
++    openModalSurface(handOverlay, { initialFocus: document.getElementById('hand-next-btn') });
+ 
+     if (result.isKapothi) fireConfetti();
+ }
+@@ -675,7 +713,7 @@ function showMatchWin() {
+     clearSavedGame();
+     appendLog(`🏆 MATCH WON by ${view.title}!`, 'match');
+ 
+-    document.getElementById('hand-result-overlay').classList.add('hidden');
++    closeModalSurface(document.getElementById('hand-result-overlay'), { restoreFocus: false });
+     document.getElementById('match-result-eyebrow').textContent = view.eyebrow;
+     document.getElementById('match-winner-text').textContent = view.title;
+     document.getElementById('match-result-summary').textContent = view.winnerTeam === 0
+@@ -685,7 +723,8 @@ function showMatchWin() {
+     document.getElementById('match-hands-played').textContent = view.handsPlayed;
+     document.getElementById('match-kapothis').textContent = `${view.kapothis[0]} – ${view.kapothis[1]}`;
+     document.getElementById('match-duration').textContent = view.duration;
+-    document.getElementById('match-win-overlay').classList.remove('hidden');
++    const matchOverlay = document.getElementById('match-win-overlay');
++    openModalSurface(matchOverlay, { initialFocus: document.getElementById('match-play-again-btn') });
+ 
+     if (view.winnerTeam === 0) fireConfetti();
+     return true;
+@@ -730,12 +769,27 @@ function showStatsPanel() {
+     document.getElementById('stats-mvp').textContent =
+         `${PLAYER_NAMES[mvpIdx]} (${runtime.stats.tricksWonByPlayer[mvpIdx]} tricks)`;
+ 
+-    document.getElementById('stats-modal').classList.remove('hidden');
++    const statsModal = document.getElementById('stats-modal');
++    openModalSurface(statsModal, {
++        initialFocus: document.getElementById('stats-close-btn'),
++        onEscape: closeStatsPanel,
++    });
++}
++
++function closeStatsPanel() {
++    closeModalSurface(document.getElementById('stats-modal'));
++}
++
++function updateMuteButton() {
++    const button = document.getElementById('mute-btn');
++    if (!button) return;
++    button.textContent = runtime.muted ? '🔇' : '🔊';
++    button.setAttribute('aria-label', runtime.muted ? 'Enable sound' : 'Mute sound');
++    button.title = runtime.muted ? 'Enable sound' : 'Mute sound';
+ }
+ 
+ /* Reflect menu-selected sound preference before the first interaction. */
+-const initialMuteButton = document.getElementById('mute-btn');
+-if (initialMuteButton) initialMuteButton.textContent = runtime.muted ? '🔇' : '🔊';
++updateMuteButton();
+ Sound.setEnabled(!runtime.muted);
+ 
+ /* ===== EVENT LISTENERS ===== */
+@@ -754,9 +808,7 @@ document.getElementById('show-stats-btn').addEventListener('click', () => {
+ document.getElementById('show-stats-btn-match').addEventListener('click', () => {
+     showStatsPanel();
+ });
+-document.getElementById('stats-close-btn').addEventListener('click', () => {
+-    document.getElementById('stats-modal').classList.add('hidden');
+-});
++document.getElementById('stats-close-btn').addEventListener('click', closeStatsPanel);
+ 
+ // Mute toggle
+ document.getElementById('mute-btn').addEventListener('click', () => {
+@@ -764,36 +816,62 @@ document.getElementById('mute-btn').addEventListener('click', () => {
+     runtime.muted = !runtime.muted;
+     Sound.setEnabled(!runtime.muted);
+     settings = saveSettings({ ...settings, sound: !runtime.muted });
+-    document.getElementById('mute-btn').textContent = runtime.muted ? '🔇' : '🔊';
++    updateMuteButton();
+ });
+ 
+-// Fair-information hint popover
++// Fair-information helper popovers remain non-modal but move focus to their
++// close control so keyboard/screen-reader users immediately enter the surface.
+ const hintPopover = document.getElementById('hint-popover');
+-document.getElementById('hint-btn').addEventListener('click', () => {
+-    previousTrickPopover?.classList.add('hidden');
++const hintButton = document.getElementById('hint-btn');
++const previousTrickPopover = document.getElementById('previous-trick-popover');
++const previousTrickButton = document.getElementById('previous-trick-btn');
++let helperReturnFocus = null;
++
++function closeHelperPopover(popover, trigger, { restoreFocus = true } = {}) {
++    if (!popover || popover.classList.contains('hidden')) return;
++    popover.classList.add('hidden');
++    trigger?.setAttribute('aria-expanded', 'false');
++    if (restoreFocus && helperReturnFocus instanceof HTMLElement) {
++        helperReturnFocus.focus({ preventScroll: true });
++    }
++    helperReturnFocus = null;
++}
++
++function openHelperPopover(popover, trigger, closeButton) {
++    helperReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : trigger;
++    popover.classList.remove('hidden');
++    trigger?.setAttribute('aria-expanded', 'true');
++    closeButton?.focus({ preventScroll: true });
++}
++
++hintButton.addEventListener('click', () => {
++    closeHelperPopover(previousTrickPopover, previousTrickButton, { restoreFocus: false });
+     const hint = buildHumanHint(controller.getSnapshot(), 0);
+     document.getElementById('hint-title').textContent = hint.title;
+     document.getElementById('hint-message').textContent = hint.message;
+-    hintPopover.classList.remove('hidden');
++    openHelperPopover(hintPopover, hintButton, document.getElementById('hint-close'));
+ });
+ document.getElementById('hint-close').addEventListener('click', () => {
+-    hintPopover.classList.add('hidden');
++    closeHelperPopover(hintPopover, hintButton);
+ });
+ 
+ // Previous trick popover
+-const previousTrickPopover = document.getElementById('previous-trick-popover');
+-document.getElementById('previous-trick-btn').addEventListener('click', () => {
+-    hintPopover.classList.add('hidden');
++previousTrickButton.addEventListener('click', () => {
++    if (!previousTrickPopover.classList.contains('hidden')) {
++        closeHelperPopover(previousTrickPopover, previousTrickButton);
++        return;
++    }
++    closeHelperPopover(hintPopover, hintButton, { restoreFocus: false });
+     updateTrickHistoryPanel();
+-    previousTrickPopover.classList.toggle('hidden');
++    openHelperPopover(previousTrickPopover, previousTrickButton, document.getElementById('previous-trick-close'));
+ });
+ document.getElementById('previous-trick-close').addEventListener('click', () => {
+-    previousTrickPopover.classList.add('hidden');
++    closeHelperPopover(previousTrickPopover, previousTrickButton);
+ });
+ 
+ // Hand result actions
+ function closeHandResultAndStartNext() {
+-    document.getElementById('hand-result-overlay').classList.add('hidden');
++    closeModalSurface(document.getElementById('hand-result-overlay'), { restoreFocus: false });
+     startRound();
+ }
+ document.getElementById('hand-next-btn').addEventListener('click', closeHandResultAndStartNext);
+@@ -802,7 +880,7 @@ document.getElementById('hand-stats-btn').addEventListener('click', showStatsPan
+ // Play again (match win)
+ document.getElementById('match-play-again-btn').addEventListener('click', () => {
+     Sound.init();
+-    document.getElementById('match-win-overlay').classList.add('hidden');
++    closeModalSurface(document.getElementById('match-win-overlay'), { restoreFocus: false });
+ 
+     controller.resetMatch().then(() => {
+         runtime.processing = false;
+@@ -824,8 +902,11 @@ document.getElementById('match-play-again-btn').addEventListener('click', () =>
+ // Close non-modal helper popovers without interrupting the match.
+ document.addEventListener('keydown', event => {
+     if (event.key !== 'Escape') return;
+-    hintPopover.classList.add('hidden');
+-    previousTrickPopover.classList.add('hidden');
++    if (!hintPopover.classList.contains('hidden')) {
++        closeHelperPopover(hintPopover, hintButton);
++    } else if (!previousTrickPopover.classList.contains('hidden')) {
++        closeHelperPopover(previousTrickPopover, previousTrickButton);
++    }
+ });
+ 
+ window.addEventListener('pagehide', persistActiveMatch);
+diff --git a/scripts/qa.mjs b/scripts/qa.mjs
+new file mode 100644
+index 0000000..8724816
+--- /dev/null
++++ b/scripts/qa.mjs
+@@ -0,0 +1,119 @@
++import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
++import { dirname, join, normalize } from 'node:path';
++
++const failures = [];
++const report = [];
++
++function fail(message) {
++    failures.push(message);
++}
++
++function read(path) {
++    return readFileSync(path, 'utf8');
++}
++
++function collectFiles(root) {
++    const result = [];
++    for (const name of readdirSync(root)) {
++        const path = join(root, name);
++        const stat = statSync(path);
++        if (stat.isDirectory()) result.push(...collectFiles(path));
++        else result.push(path);
++    }
++    return result;
++}
++
++function localReferenceTarget(page, reference) {
++    const cleaned = reference.split('#')[0].split('?')[0];
++    if (!cleaned || /^(?:https?:|data:|mailto:|tel:|javascript:)/i.test(cleaned)) return null;
++    return normalize(join(dirname(page), cleaned));
++}
++
++function validateHtml(page) {
++    const html = read(page);
++    const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
++    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
++    if (duplicates.length) fail(`${page}: duplicate ids: ${[...new Set(duplicates)].join(', ')}`);
++
++    const references = [...html.matchAll(/\b(?:href|src)=["']([^"']+)["']/g)].map(match => match[1]);
++    for (const reference of references) {
++        const target = localReferenceTarget(page, reference);
++        if (target && !existsSync(target)) fail(`${page}: missing local reference ${reference}`);
++    }
++
++    for (const dialog of html.matchAll(/<[^>]+role=["']dialog["'][^>]*>/g)) {
++        const tag = dialog[0];
++        const labelledBy = tag.match(/aria-labelledby=["']([^"']+)["']/)?.[1];
++        const label = tag.match(/aria-label=["']([^"']+)["']/)?.[1];
++        if (!labelledBy && !label) fail(`${page}: dialog missing accessible label: ${tag}`);
++        if (labelledBy && !ids.includes(labelledBy)) fail(`${page}: dialog references missing label id ${labelledBy}`);
++    }
++
++    report.push(`${page}: ${ids.length} unique ids, ${references.length} local/external references checked`);
++    return { html, ids: new Set(ids) };
++}
++
++const pageData = new Map();
++for (const page of ['index.html', 'main-menu.html', 'tutorial.html', 'game.html']) {
++    pageData.set(page, validateHtml(page));
++}
++
++function validateLiteralIds(scriptPath, page) {
++    const source = read(scriptPath);
++    const ids = pageData.get(page).ids;
++    const requested = [...source.matchAll(/getElementById\(["']([^"']+)["']\)/g)].map(match => match[1]);
++    const missing = [...new Set(requested.filter(id => !ids.has(id)))];
++    if (missing.length) fail(`${scriptPath}: IDs missing from ${page}: ${missing.join(', ')}`);
++    report.push(`${scriptPath}: ${requested.length} literal DOM id references checked against ${page}`);
++}
++
++validateLiteralIds('script.js', 'game.html');
++validateLiteralIds('src/ui/main-menu.js', 'main-menu.html');
++validateLiteralIds('src/ui/tutorial.js', 'tutorial.html');
++
++const engineFiles = collectFiles('src/engine').filter(path => path.endsWith('.js'));
++const controllerFiles = collectFiles('src/controllers').filter(path => path.endsWith('.js'));
++const aiFiles = collectFiles('src/ai').filter(path => path.endsWith('.js'));
++
++const engineForbidden = /\b(?:document|window|AudioContext|webkitAudioContext|localStorage|sessionStorage|requestAnimationFrame|setTimeout)\b/;
++for (const file of engineFiles) {
++    if (engineForbidden.test(read(file))) fail(`${file}: browser/presentation dependency leaked into rules engine`);
++}
++
++const orchestrationForbidden = /\b(?:document|window|AudioContext|webkitAudioContext|localStorage|sessionStorage)\b/;
++for (const file of [...controllerFiles, ...aiFiles]) {
++    if (orchestrationForbidden.test(read(file))) fail(`${file}: browser dependency leaked into controller/AI layer`);
++}
++report.push(`Architecture purity: ${engineFiles.length} engine, ${controllerFiles.length} controller, ${aiFiles.length} AI files checked`);
++
++const gameHtml = pageData.get('game.html').html;
++if (!/id=["']p0-hand["'][^>]*tabindex=["']-1["']/.test(gameHtml)) {
++    fail('game.html: skip-link target #p0-hand must be programmatically focusable');
++}
++if (!/id=["']hint-btn["'][^>]*aria-controls=["']hint-popover["'][^>]*aria-expanded=["']false["']/.test(gameHtml)) {
++    fail('game.html: hint control must expose aria-controls/aria-expanded');
++}
++if (!/id=["']previous-trick-btn["'][^>]*aria-controls=["']previous-trick-popover["'][^>]*aria-expanded=["']false["']/.test(gameHtml)) {
++    fail('game.html: previous-trick control must expose aria-controls/aria-expanded');
++}
++
++const script = read('script.js');
++if (!/createElement\(playerId === 0 \? ['"]button['"] : ['"]div['"]\)/.test(script)) {
++    fail('script.js: human playing cards must be native keyboard-focusable buttons');
++}
++if (/state\.hands\[0\]\.sort\s*\(/.test(script)) {
++    fail('script.js: presentation sorting must not mutate authoritative engine hand state');
++}
++
++const packageJson = JSON.parse(read('package.json'));
++if (packageJson.version !== '1.0.0') fail(`package.json: release version must be 1.0.0, found ${packageJson.version}`);
++if (!packageJson.scripts?.verify) fail('package.json: missing release verification script');
++
++if (failures.length) {
++    console.error('Release QA failed:');
++    failures.forEach(message => console.error(` - ${message}`));
++    process.exit(1);
++}
++
++console.log('Static release QA passed.');
++for (const line of report) console.log(` - ${line}`);
+diff --git a/src/ui/focusTrap.js b/src/ui/focusTrap.js
+new file mode 100644
+index 0000000..18d8192
+--- /dev/null
++++ b/src/ui/focusTrap.js
+@@ -0,0 +1,145 @@
++const FOCUSABLE_SELECTOR = [
++    'a[href]',
++    'button:not([disabled])',
++    'select:not([disabled])',
++    'input:not([disabled])',
++    'textarea:not([disabled])',
++    '[tabindex]:not([tabindex="-1"])',
++].join(',');
++
++const stack = [];
++let listening = false;
++
++function isHTMLElement(value) {
++    const HTMLElementCtor = globalThis.HTMLElement;
++    return typeof HTMLElementCtor === 'function' && value instanceof HTMLElementCtor;
++}
++
++function focusables(container) {
++    return [...container.querySelectorAll(FOCUSABLE_SELECTOR)]
++        .filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
++}
++
++function focusInitial(entry) {
++    const preferred = typeof entry.initialFocus === 'function'
++        ? entry.initialFocus()
++        : entry.initialFocus;
++    const target = isHTMLElement(preferred) && !preferred.hidden
++        ? preferred
++        : focusables(entry.container)[0] ?? entry.container;
++
++    if (!target.hasAttribute('tabindex') && target === entry.container) {
++        target.setAttribute('tabindex', '-1');
++        entry.addedContainerTabIndex = true;
++    }
++    target.focus({ preventScroll: true });
++}
++
++function handleKeydown(event) {
++    const entry = stack.at(-1);
++    if (!entry) return;
++
++    if (event.key === 'Escape' && typeof entry.onEscape === 'function') {
++        event.preventDefault();
++        event.stopPropagation();
++        entry.onEscape();
++        return;
++    }
++
++    if (event.key !== 'Tab') return;
++
++    const items = focusables(entry.container);
++    if (items.length === 0) {
++        event.preventDefault();
++        entry.container.focus({ preventScroll: true });
++        return;
++    }
++
++    const first = items[0];
++    const last = items.at(-1);
++    const active = globalThis.document?.activeElement;
++
++    if (event.shiftKey && (active === first || !entry.container.contains(active))) {
++        event.preventDefault();
++        last.focus({ preventScroll: true });
++    } else if (!event.shiftKey && (active === last || !entry.container.contains(active))) {
++        event.preventDefault();
++        first.focus({ preventScroll: true });
++    }
++}
++
++function ensureListener() {
++    if (listening || !globalThis.document) return;
++    globalThis.document.addEventListener('keydown', handleKeydown, true);
++    listening = true;
++}
++
++function maybeRemoveListener() {
++    if (!listening || stack.length > 0 || !globalThis.document) return;
++    globalThis.document.removeEventListener('keydown', handleKeydown, true);
++    listening = false;
++}
++
++/**
++ * Trap keyboard focus inside one visible dialog-like surface.
++ *
++ * Traps are stack-aware so a secondary modal (for example Statistics opened
++ * from a result dialog) can temporarily sit above another modal and return
++ * focus to the exact invoking control when it closes.
++ */
++export function activateFocusTrap(container, {
++    initialFocus = null,
++    onEscape = null,
++    restoreFocus = true,
++} = {}) {
++    if (!isHTMLElement(container)) {
++        throw new TypeError('Focus trap container must be an HTMLElement');
++    }
++
++    const existingIndex = stack.findIndex(entry => entry.container === container);
++    if (existingIndex >= 0) stack.splice(existingIndex, 1);
++
++    const entry = {
++        container,
++        initialFocus,
++        onEscape,
++        restoreFocus,
++        returnFocus: isHTMLElement(globalThis.document?.activeElement)
++            ? globalThis.document.activeElement
++            : null,
++        addedContainerTabIndex: false,
++    };
++
++    stack.push(entry);
++    ensureListener();
++    queueMicrotask(() => {
++        if (stack.at(-1) === entry) focusInitial(entry);
++    });
++    return entry;
++}
++
++/** Close a trap. Returns true when a matching active trap existed. */
++export function deactivateFocusTrap(container, { restoreFocus = true } = {}) {
++    const index = stack.findIndex(entry => entry.container === container);
++    if (index < 0) return false;
++
++    const [entry] = stack.splice(index, 1);
++    if (entry.addedContainerTabIndex) entry.container.removeAttribute('tabindex');
++
++    const shouldRestore = restoreFocus && entry.restoreFocus && isHTMLElement(entry.returnFocus);
++    if (shouldRestore && !entry.returnFocus.hidden && !entry.returnFocus.hasAttribute('disabled')) {
++        queueMicrotask(() => entry.returnFocus.focus({ preventScroll: true }));
++    } else if (stack.length > 0 && index === stack.length) {
++        queueMicrotask(() => focusInitial(stack.at(-1)));
++    }
++
++    maybeRemoveListener();
++    return true;
++}
++
++/** Primarily for deterministic UI tests and page teardown. */
++export function clearFocusTraps({ restoreFocus = false } = {}) {
++    while (stack.length) {
++        deactivateFocusTrap(stack.at(-1).container, { restoreFocus });
++    }
++}
+diff --git a/src/ui/main-menu.js b/src/ui/main-menu.js
+index bbcb43e..1418c75 100644
+--- a/src/ui/main-menu.js
++++ b/src/ui/main-menu.js
+@@ -1,5 +1,7 @@
+ import { loadSettings, saveSettings } from '../storage/settings.js';
+ import { loadGame } from '../storage/saveGame.js';
++import { activateFocusTrap, deactivateFocusTrap } from './focusTrap.js';
++import { configureMotion } from './motion.js';
+ 
+ const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
+ 
+@@ -7,6 +9,7 @@ const settingsBackdrop = document.getElementById('settings-backdrop');
+ const settingsButton = document.getElementById('settings-button');
+ const settingsMenuButton = document.getElementById('settings-menu-button');
+ const settingsClose = document.getElementById('settings-close');
++const settingsPanel = settingsBackdrop.querySelector('.settings-panel');
+ const difficultySetting = document.getElementById('difficulty-setting');
+ const soundSetting = document.getElementById('sound-setting');
+ const animationSpeedSetting = document.getElementById('animation-speed-setting');
+@@ -35,6 +38,7 @@ function syncContinueMatch() {
+ 
+ function syncControls() {
+     preferences = loadSettings();
++    configureMotion(preferences);
+     difficultySetting.value = preferences.difficulty;
+     soundSetting.value = preferences.sound ? 'on' : 'off';
+     animationSpeedSetting.value = preferences.animationSpeed;
+@@ -49,12 +53,16 @@ function syncControls() {
+ function openSettings() {
+     lastFocusedElement = document.activeElement;
+     settingsBackdrop.hidden = false;
+-    settingsClose.focus();
++    activateFocusTrap(settingsPanel, {
++        initialFocus: settingsClose,
++        onEscape: closeSettings,
++    });
+ }
+ 
+ function closeSettings() {
++    deactivateFocusTrap(settingsPanel, { restoreFocus: false });
+     settingsBackdrop.hidden = true;
+-    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
++    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus({ preventScroll: true });
+ }
+ 
+ function commitPreferences() {
+@@ -64,6 +72,7 @@ function commitPreferences() {
+         animationSpeed: animationSpeedSetting.value,
+         reducedMotion: reducedMotionSetting.value,
+     });
++    configureMotion(preferences);
+     updatePlayLink();
+ }
+ 
+@@ -79,9 +88,6 @@ settingsBackdrop.addEventListener('click', event => {
+     if (event.target === settingsBackdrop) closeSettings();
+ });
+ 
+-document.addEventListener('keydown', event => {
+-    if (event.key === 'Escape' && !settingsBackdrop.hidden) closeSettings();
+-});
+ 
+ window.addEventListener('pageshow', syncControls);
+ syncControls();
+diff --git a/src/ui/tutorial.js b/src/ui/tutorial.js
+index 14d8e51..2d6c9fd 100644
+--- a/src/ui/tutorial.js
++++ b/src/ui/tutorial.js
+@@ -1,5 +1,9 @@
++import { loadSettings } from '../storage/settings.js';
++import { configureMotion } from './motion.js';
+ import { TUTORIAL_STEPS } from './tutorialData.js';
+ 
++configureMotion(loadSettings());
++
+ const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
+ 
+ const progress = document.getElementById('tutorial-progress');
+diff --git a/style.css b/style.css
+index a522e6f..caf2931 100644
+--- a/style.css
++++ b/style.css
+@@ -5,5 +5,6 @@
+ @import url('./styles/cards.css');
+ @import url('./styles/animations.css');
+ @import url('./styles/results.css');
++@import url('./styles/accessibility.css');
+ 
+ .hidden { display: none !important; }
+diff --git a/styles/accessibility.css b/styles/accessibility.css
+new file mode 100644
+index 0000000..202d597
+--- /dev/null
++++ b/styles/accessibility.css
+@@ -0,0 +1,61 @@
++/* Batch 6 — keyboard, focus, contrast and minimum-readable-size hardening. */
++.card-control {
++    appearance: none;
++    -webkit-appearance: none;
++    border: 0;
++    padding: 0;
++    background: transparent;
++    color: inherit;
++    font: inherit;
++    cursor: pointer;
++}
++
++.card-control:focus-visible {
++    outline: none;
++}
++
++.card-control:focus-visible .card {
++    outline: 3px solid var(--accent-gold);
++    outline-offset: 4px;
++    box-shadow:
++        0 16px 36px rgba(0,0,0,.36),
++        0 0 0 5px rgba(232,196,106,.16);
++}
++
++.card-control:disabled {
++    cursor: not-allowed;
++}
++
++/* Keep primary gameplay information comfortably readable. */
++.team-score .score-label,
++.turn-badge,
++.trick-zone-heading,
++#status-banner,
++.btn,
++.previous-trick-player {
++    font-size: max(0.75rem, 12px);
++}
++
++.t-label,
++.t-caller,
++.eyebrow {
++    font-size: max(0.68rem, 11px);
++}
++
++.popover-close,
++.settings-close {
++    min-width: 40px;
++    min-height: 40px;
++}
++
++@media (forced-colors: active) {
++    .card.card-valid,
++    .card-control:focus-visible .card {
++        outline: 2px solid Highlight;
++        outline-offset: 3px;
++    }
++
++    .card.card-invalid {
++        opacity: .55;
++    }
++}
+diff --git a/styles/base.css b/styles/base.css
+index 8522bf3..8e5bde3 100644
+--- a/styles/base.css
++++ b/styles/base.css
+@@ -53,15 +53,40 @@ select:focus-visible,
+     border: 0 !important;
+ }
+ 
++/* Explicit player preference takes precedence over the device default. */
++html[data-motion="reduced"]:focus-within {
++    scroll-behavior: auto;
++}
++
++html[data-motion="reduced"] *,
++html[data-motion="reduced"] *::before,
++html[data-motion="reduced"] *::after {
++    animation-duration: 0.01ms !important;
++    animation-iteration-count: 1 !important;
++    transition-duration: 0.01ms !important;
++    scroll-behavior: auto !important;
++}
++
+ @media (prefers-reduced-motion: reduce) {
+-    html:focus-within {
++    html:not([data-motion="full"]):focus-within {
+         scroll-behavior: auto;
+     }
+ 
+-    *, *::before, *::after {
++    html:not([data-motion="full"]) *,
++    html:not([data-motion="full"]) *::before,
++    html:not([data-motion="full"]) *::after {
+         animation-duration: 0.01ms !important;
+         animation-iteration-count: 1 !important;
+         transition-duration: 0.01ms !important;
+         scroll-behavior: auto !important;
+     }
+ }
++
++@media (forced-colors: active) {
++    button:focus-visible,
++    a:focus-visible,
++    select:focus-visible,
++    [tabindex]:focus-visible {
++        outline: 2px solid Highlight;
++    }
++}
+diff --git a/styles/menu.css b/styles/menu.css
+index 200388c..6acbc3f 100644
+--- a/styles/menu.css
++++ b/styles/menu.css
+@@ -417,3 +417,9 @@ body.menu-page {
+         padding-inline: 18px;
+     }
+ }
++
++/* Wide but short windows must remain scrollable instead of clipping actions. */
++@media (max-height: 700px) and (min-width: 561px) {
++    body.menu-page { overflow: auto; }
++    .menu-shell { min-height: 700px; }
++}
+diff --git a/styles/tutorial.css b/styles/tutorial.css
+index 27b80c3..b949b9f 100644
+--- a/styles/tutorial.css
++++ b/styles/tutorial.css
+@@ -501,3 +501,10 @@ body.tutorial-page {
+     .seat-map, .trick-map { transform: scale(.86); }
+     .rank-ladder { gap: 4px; transform: scale(.9); }
+ }
++
++/* Preserve access to navigation controls on short landscape/desktop windows. */
++@media (max-height: 700px) and (min-width: 861px) {
++    body.tutorial-page { overflow: auto; }
++    .tutorial-shell { min-height: 700px; }
++    .tutorial-main { overflow: visible; }
++}
+diff --git a/tests/release-accessibility.test.js b/tests/release-accessibility.test.js
+new file mode 100644
+index 0000000..cf63c15
+--- /dev/null
++++ b/tests/release-accessibility.test.js
+@@ -0,0 +1,43 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { existsSync, readFileSync } from 'node:fs';
++
++const read = path => readFileSync(path, 'utf8');
++
++test('human cards use native button controls without mutating authoritative hand order', () => {
++    const script = read('script.js');
++    assert.match(script, /createElement\(playerId === 0 \? 'button' : 'div'\)/);
++    assert.match(script, /wrapper\.setAttribute\('aria-label'/);
++    assert.match(script, /wrapper\.disabled = !legal/);
++    assert.doesNotMatch(script, /state\.hands\[0\]\.sort\s*\(/);
++});
++
++test('game helper controls expose popover relationships and skip target is focusable', () => {
++    const html = read('game.html');
++    assert.match(html, /id="hint-btn"[^>]+aria-controls="hint-popover"[^>]+aria-expanded="false"/);
++    assert.match(html, /id="previous-trick-btn"[^>]+aria-controls="previous-trick-popover"[^>]+aria-expanded="false"/);
++    assert.match(html, /id="p0-hand"[^>]+tabindex="-1"/);
++    assert.match(html, /<caption class="visually-hidden">Tricks won by player<\/caption>/);
++});
++
++test('modal focus trap is shared by game and main menu', () => {
++    assert.equal(existsSync('src/ui/focusTrap.js'), true);
++    assert.match(read('script.js'), /activateFocusTrap/);
++    assert.match(read('src/ui/main-menu.js'), /activateFocusTrap/);
++});
++
++test('motion preference is applied to main menu, tutorial and gameplay', () => {
++    assert.match(read('src/ui/main-menu.js'), /configureMotion\(preferences\)/);
++    assert.match(read('src/ui/tutorial.js'), /configureMotion\(loadSettings\(\)\)/);
++    assert.match(read('script.js'), /configureMotion\(settings\)/);
++    assert.match(read('styles/base.css'), /html\[data-motion="reduced"\]/);
++    assert.match(read('styles/base.css'), /html:not\(\[data-motion="full"\]\)/);
++});
++
++test('game stylesheet contains explicit keyboard card focus treatment', () => {
++    const entry = read('style.css');
++    const css = read('styles/accessibility.css');
++    assert.match(entry, /styles\/accessibility\.css/);
++    assert.match(css, /\.card-control:focus-visible \.card/);
++    assert.match(css, /forced-colors: active/);
++});
+diff --git a/tests/release-gameflow.test.js b/tests/release-gameflow.test.js
+new file mode 100644
+index 0000000..51ab5c7
+--- /dev/null
++++ b/tests/release-gameflow.test.js
+@@ -0,0 +1,108 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++    ACTION,
++    GameEngine,
++    PHASE,
++    cardId,
++} from '../src/engine/index.js';
++
++function seededRng(seed) {
++    let state = seed >>> 0;
++    return () => {
++        state = (1664525 * state + 1013904223) >>> 0;
++        return state / 0x100000000;
++    };
++}
++
++function dealCurrentPhase(game) {
++    while ([PHASE.DEAL_INITIAL, PHASE.DEAL_REMAINING].includes(game.state.phase)) {
++        game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    }
++}
++
++function playOneHand(game) {
++    if (game.state.phase === PHASE.IDLE) {
++        game.dispatch({ type: ACTION.START_MATCH });
++    } else if (game.state.phase === PHASE.HAND_COMPLETE) {
++        game.dispatch({ type: ACTION.START_NEXT_HAND });
++    } else {
++        throw new Error(`Cannot start deterministic hand from ${game.state.phase}`);
++    }
++
++    dealCurrentPhase(game);
++
++    assert.equal(game.state.phase, PHASE.TRUMP_SELECTION);
++    assert.deepEqual(game.state.hands.map(hand => hand.length), [4, 4, 4, 4]);
++
++    const caller = game.state.trumpCaller;
++    const suit = game.state.hands[caller][0].suit;
++    game.dispatch({ type: ACTION.SELECT_TRUMP, playerId: caller, suit });
++    dealCurrentPhase(game);
++
++    assert.equal(game.state.phase, PHASE.PLAYING);
++    assert.deepEqual(game.state.hands.map(hand => hand.length), [8, 8, 8, 8]);
++
++    let completedTricks = 0;
++    while (game.state.phase === PHASE.PLAYING) {
++        if (game.state.currentTrick.length === 4) {
++            game.dispatch({ type: ACTION.COMPLETE_TRICK });
++            completedTricks += 1;
++            continue;
++        }
++
++        const playerId = game.state.turnIndex;
++        const legal = game.getLegalCardIndices(playerId);
++        assert.ok(legal.length > 0, 'active player must always have a legal move');
++        const selected = game.state.hands[playerId][legal[0]];
++        game.dispatch({
++            type: ACTION.PLAY_CARD,
++            playerId,
++            cardId: cardId(selected),
++        });
++    }
++
++    assert.equal(completedTricks, 8);
++    assert.equal(game.state.trickHistory.length, 8);
++    assert.deepEqual(game.state.hands.map(hand => hand.length), [0, 0, 0, 0]);
++    assert.equal(game.state.teamTricks[0] + game.state.teamTricks[1], 8);
++
++    const previousTokens = [...game.state.tokens];
++    const scoreResult = game.dispatch({ type: ACTION.SCORE_HAND });
++    assert.ok([PHASE.HAND_COMPLETE, PHASE.MATCH_COMPLETE].includes(scoreResult.state.phase));
++    assert.ok(scoreResult.state.tokens[0] >= previousTokens[0]);
++    assert.ok(scoreResult.state.tokens[1] >= previousTokens[1]);
++    return scoreResult.state;
++}
++
++test('100 deterministic complete matches terminate without impossible state', () => {
++    for (let seed = 1; seed <= 100; seed += 1) {
++        const game = new GameEngine({ rng: seededRng(seed) });
++        let hands = 0;
++
++        while (game.state.phase !== PHASE.MATCH_COMPLETE && hands < 40) {
++            playOneHand(game);
++            hands += 1;
++        }
++
++        assert.equal(game.state.phase, PHASE.MATCH_COMPLETE, `seed ${seed} must finish`);
++        assert.ok(game.state.tokens.some(tokens => tokens >= game.state.matchTokenTarget));
++        assert.ok(hands > 0 && hands < 40, `seed ${seed} completed in a sane number of hands`);
++        assert.equal(game.state.currentTrick.length, 0);
++        assert.deepEqual(game.state.hands.map(hand => hand.length), [0, 0, 0, 0]);
++    }
++});
++
++test('reset after a completed match returns a clean release-ready state', () => {
++    const game = new GameEngine({ rng: seededRng(404) });
++    while (game.state.phase !== PHASE.MATCH_COMPLETE) playOneHand(game);
++
++    const result = game.dispatch({ type: ACTION.RESET_MATCH });
++    assert.equal(result.state.phase, PHASE.IDLE);
++    assert.deepEqual(result.state.tokens, [0, 0]);
++    assert.deepEqual(result.state.teamTricks, [0, 0]);
++    assert.deepEqual(result.state.hands, [[], [], [], []]);
++    assert.equal(result.state.trump, null);
++    assert.equal(result.state.handNumber, 0);
++    assert.equal(result.state.matchOver, false);
++});
+diff --git a/tests/release-metadata.test.js b/tests/release-metadata.test.js
+new file mode 100644
+index 0000000..2949f4f
+--- /dev/null
++++ b/tests/release-metadata.test.js
+@@ -0,0 +1,21 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { existsSync, readFileSync } from 'node:fs';
++
++const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
++
++test('Single Player v1 release metadata is frozen at 1.0.0', () => {
++    assert.equal(packageJson.version, '1.0.0');
++    assert.equal(packageJson.private, true);
++    assert.ok(packageJson.scripts.verify);
++});
++
++test('release documentation and QA checklist are committed', () => {
++    for (const path of [
++        'docs/batch-6-notes.md',
++        'docs/release-qa.md',
++        'docs/single-player-v1-release.md',
++    ]) {
++        assert.equal(existsSync(path), true, `${path} should exist`);
++    }
++});
+diff --git a/tests/release-session-matrix.test.js b/tests/release-session-matrix.test.js
+new file mode 100644
+index 0000000..80c865f
+--- /dev/null
++++ b/tests/release-session-matrix.test.js
+@@ -0,0 +1,105 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++    ACTION,
++    GameEngine,
++    PHASE,
++    PLAYER,
++    cardId,
++} from '../src/engine/index.js';
++
++function seededRng(seed) {
++    let state = seed >>> 0;
++    return () => {
++        state = (1664525 * state + 1013904223) >>> 0;
++        return state / 0x100000000;
++    };
++}
++
++function assertRoundTrip(game, label) {
++    const exported = game.exportSession();
++    const restored = GameEngine.fromSession(exported, { rng: seededRng(999) });
++    assert.deepEqual(restored.getSnapshot(), game.getSnapshot(), `${label}: state`);
++    assert.deepEqual(restored.exportSession(), exported, `${label}: complete engine session`);
++    return restored;
++}
++
++function finishInitialDeal(game) {
++    while (game.state.phase === PHASE.DEAL_INITIAL) {
++        game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    }
++}
++
++function finishRemainingDeal(game) {
++    while (game.state.phase === PHASE.DEAL_REMAINING) {
++        game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    }
++}
++
++function playLegal(game) {
++    const playerId = game.state.turnIndex;
++    const index = game.getLegalCardIndices(playerId)[0];
++    const selected = game.state.hands[playerId][index];
++    game.dispatch({ type: ACTION.PLAY_CARD, playerId, cardId: cardId(selected) });
++}
++
++test('engine session round-trips every resumable phase boundary', () => {
++    const game = new GameEngine({ dealerIndex: PLAYER.WEST, rng: seededRng(87) });
++    game.dispatch({ type: ACTION.START_MATCH });
++    assertRoundTrip(game, 'start of initial deal');
++
++    game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    assertRoundTrip(game, 'mid initial deal');
++
++    finishInitialDeal(game);
++    assert.equal(game.state.phase, PHASE.TRUMP_SELECTION);
++    assertRoundTrip(game, 'trump selection');
++
++    game.dispatch({ type: ACTION.SELECT_TRUMP, playerId: game.state.trumpCaller, suit: 'Clubs' });
++    game.dispatch({ type: ACTION.DEAL_NEXT_BATCH });
++    assertRoundTrip(game, 'mid remaining deal');
++
++    finishRemainingDeal(game);
++    assert.equal(game.state.phase, PHASE.PLAYING);
++    assertRoundTrip(game, 'start of play');
++
++    playLegal(game);
++    playLegal(game);
++    assertRoundTrip(game, 'partial trick');
++
++    playLegal(game);
++    playLegal(game);
++    assert.equal(game.state.currentTrick.length, 4);
++    assertRoundTrip(game, 'complete trick awaiting collection');
++
++    game.dispatch({ type: ACTION.COMPLETE_TRICK });
++    assertRoundTrip(game, 'between tricks');
++
++    while (game.state.phase === PHASE.PLAYING) {
++        if (game.state.currentTrick.length === 4) game.dispatch({ type: ACTION.COMPLETE_TRICK });
++        else playLegal(game);
++    }
++    assert.equal(game.state.phase, PHASE.HAND_SCORING);
++    assertRoundTrip(game, 'hand scoring');
++
++    game.dispatch({ type: ACTION.SCORE_HAND });
++    if (game.state.phase === PHASE.HAND_COMPLETE) {
++        assertRoundTrip(game, 'hand complete');
++    }
++});
++
++test('restored pending trick resolves to the same winner and next state', () => {
++    const game = new GameEngine({ rng: seededRng(111) });
++    game.dispatch({ type: ACTION.START_MATCH });
++    finishInitialDeal(game);
++    game.dispatch({ type: ACTION.SELECT_TRUMP, playerId: game.state.trumpCaller, suit: 'Hearts' });
++    finishRemainingDeal(game);
++    for (let i = 0; i < 4; i += 1) playLegal(game);
++
++    const restored = GameEngine.fromSession(game.exportSession());
++    const originalResult = game.dispatch({ type: ACTION.COMPLETE_TRICK });
++    const restoredResult = restored.dispatch({ type: ACTION.COMPLETE_TRICK });
++
++    assert.deepEqual(restoredResult.events, originalResult.events);
++    assert.deepEqual(restoredResult.state, originalResult.state);
++});

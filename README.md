@@ -2,42 +2,30 @@
 
 A browser-based implementation of the Sri Lankan partnership trick-taking card game Omi.
 
-## Batch 5 status
+## Single Player v1.0.0
 
-The current branch contains implementation-plan Patches **0–15**.
+This repository contains the completed **Single Player v1** scope from implementation-plan Patches **0–19**. The release focuses on accurate Standard Omi rules, a reusable authoritative game engine, fair AI, a polished responsive interface, accessibility, persistence and release-grade regression coverage.
 
-### Product experience
+### Included in v1
 
-- neutral repository entry (`index.html`) routes to the Main Menu until the user-owned Welcome page is added;
-- Main Menu provides Play Solo, Continue Match, Tutorial and persistent Settings;
-- complete 11-step Standard Omi tutorial;
+- Standard 32-card Omi rules using ranks 7 through Ace;
+- compulsory trump selection after the first four cards;
+- counter-clockwise deal and play;
+- caller/defender/Kapothi scoring, 4–4 carry and 10-token match target;
+- pure authoritative `GameEngine` with action/event contracts and serializable sessions;
+- one human player plus three fair-information AI players;
+- Casual and Smart AI difficulties;
+- Main Menu and complete 11-step Tutorial;
 - responsive premium game table and production card renderer;
-- presentation-only deal/play/trick animations;
-- fair-play Hint system and richer Previous Trick view;
-- dedicated hand-result and match-result dialogs.
+- presentation-only deal, play and trick-collection animations;
+- persistent sound, speed, motion and AI settings;
+- save/continue match across supported game phases;
+- fair Hint system and Previous Trick viewer;
+- hand-result and match-result flows with statistics;
+- keyboard, touch, focus-management, reduced-motion and forced-colors hardening;
+- deterministic full-match regression tests and static release QA.
 
-### Persistent settings and save/resume
-
-- Smart/Casual AI difficulty;
-- Sound On/Off;
-- Relaxed/Normal/Fast presentation speed;
-- System/Reduced/Full motion preference;
-- versioned local save record;
-- strict engine-session validation and card rehydration;
-- conditional Continue Match menu action;
-- resume support across deal, trump, trick-play, hand-scoring and hand-complete boundaries;
-- corrupt/completed saves are discarded safely.
-
-### Architecture
-
-- 32-card Standard Omi rules with compulsory trump, 4–4 carry and 10-token target;
-- pure authoritative `GameEngine` with serializable actions/events/state;
-- DOM-independent `SinglePlayerController`;
-- Casual and Smart AI constrained to fair/public information;
-- dedicated `AudioManager`, storage modules, motion configuration and UI helpers;
-- rules engine remains free of DOM, audio, browser-storage and animation dependencies.
-
-Joker and pass-trump remain intentionally excluded from Standard Mode.
+Joker, pass-trump and other house-rule variations remain intentionally excluded from Standard Mode.
 
 ## Application routes
 
@@ -47,10 +35,24 @@ user-owned welcome.html
 main-menu.html
    ├── tutorial.html
    ├── game.html
-   └── game.html?resume=1   (only when an active save exists)
+   └── game.html?resume=1   (only when a valid active save exists)
 ```
 
-The final Welcome page is maintained separately by the user. See `docs/welcome-routing-contract.md`.
+The repository currently keeps `index.html` as a neutral compatibility entry that redirects to `main-menu.html`. The final cinematic Welcome page is maintained separately by the user and only needs to preserve the `main-menu.html` routing contract. See `docs/welcome-routing-contract.md`.
+
+## Architecture
+
+```text
+UI / Presentation
+       ↓
+SinglePlayerController
+       ↓
+GameEngine
+       ↑
+Fair AI strategies
+```
+
+The authoritative engine remains independent from DOM, CSS, Web Audio, browser storage and presentation timers. Game rules are therefore testable without a browser and remain suitable for a future server-authoritative multiplayer controller.
 
 ## Project structure
 
@@ -58,46 +60,60 @@ The final Welcome page is maintained separately by the user. See `docs/welcome-r
 index.html                       Neutral fallback entry → Main Menu
 main-menu.html                   Navigation, Continue Match and Settings
 tutorial.html                    11-step Standard Omi tutorial
-game.html                        Single-player table
-script.js                        Gameplay presentation integration
+game.html                        Single-player game table
+script.js                        Single Player v1 presentation integration
 style.css                        Gameplay stylesheet entry point
-styles/                          Shared tokens, table/cards/animation/results CSS
+styles/                          Shared design, cards, table, animation and accessibility CSS
 src/engine/                      Authoritative rules/actions/events/state/session
 src/controllers/                 Single-player orchestration
 src/ai/                          Fair-information AI strategies
 src/audio/                       Browser presentation audio
 src/storage/                     Settings and active-match persistence
-src/ui/                          UI rendering, hints, results and motion helpers
-scripts/check.mjs                Cross-platform JS syntax check
-tests/                           Node built-in automated tests
-docs/                            Batch/audit documentation
+src/ui/                          Rendering, motion, focus, hints and result helpers
+scripts/check.mjs                JavaScript syntax verification
+scripts/qa.mjs                   Static release/architecture QA
+tests/                           Node automated regression suite
+docs/release-qa.md               Required manual browser/device QA
+docs/single-player-v1-release.md Release scope and boundary
 ```
 
 ## Requirements
 
 - Modern browser with ES module support
-- Node.js 20+ for tests
+- Node.js 20+ for automated verification
 
 ## Run locally
+
+Serve the project over HTTP rather than opening the HTML files directly:
 
 ```bash
 python -m http.server 8000
 ```
 
-Open `http://localhost:8000/`.
+Then open:
 
-## Verification
-
-```bash
-npm test
-npm run check
+```text
+http://localhost:8000/
 ```
 
-## Next development boundary
+## Release verification
 
-Batch 5 completes feature Patches 12–15. The remaining release-hardening work is:
+Run the complete automated release gate:
 
-- Patch 16 — expanded automated regression coverage;
-- Patch 17 — responsive/accessibility QA;
-- Patch 18 — release-candidate freeze and fixes;
-- Patch 19 — Single Player v1 release.
+```bash
+npm run verify
+```
+
+This runs syntax checks, the full Node test suite and static release QA.
+
+Manual browser/device verification is also required before merging or tagging a release. Follow:
+
+```text
+docs/release-qa.md
+```
+
+## Release boundary
+
+**Single Player v1 is feature-complete.** Do not add further single-player features during release hardening unless they fix a verified defect.
+
+The next planned product phase is online multiplayer. Multiplayer should reuse the existing rules model with a server-authoritative controller/transport rather than duplicating or rewriting Omi rules in the browser.

@@ -501,3 +501,10 @@ body.tutorial-page {
     .seat-map, .trick-map { transform: scale(.86); }
     .rank-ladder { gap: 4px; transform: scale(.9); }
 }
+
+/* Preserve access to navigation controls on short landscape/desktop windows. */
+@media (max-height: 700px) and (min-width: 861px) {
+    body.tutorial-page { overflow: auto; }
+    .tutorial-shell { min-height: 700px; }
+    .tutorial-main { overflow: visible; }
+}

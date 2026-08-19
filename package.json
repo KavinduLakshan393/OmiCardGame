@@ -1,11 +1,13 @@
 {
   "name": "omi-card-game",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "qa": "node scripts/qa.mjs",
+    "verify": "npm run check && npm test && npm run qa"
   },
   "engines": {
     "node": ">=20"

@@ -1,4 +1,8 @@
+import { loadSettings } from '../storage/settings.js';
+import { configureMotion } from './motion.js';
 import { TUTORIAL_STEPS } from './tutorialData.js';
+
+configureMotion(loadSettings());
 
 const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
 

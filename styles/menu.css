@@ -417,3 +417,9 @@ body.menu-page {
         padding-inline: 18px;
     }
 }
+
+/* Wide but short windows must remain scrollable instead of clipping actions. */
+@media (max-height: 700px) and (min-width: 561px) {
+    body.menu-page { overflow: auto; }
+    .menu-shell { min-height: 700px; }
+}

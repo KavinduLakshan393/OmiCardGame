@@ -1,0 +1,61 @@
+/* Batch 6 — keyboard, focus, contrast and minimum-readable-size hardening. */
+.card-control {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.card-control:focus-visible {
+    outline: none;
+}
+
+.card-control:focus-visible .card {
+    outline: 3px solid var(--accent-gold);
+    outline-offset: 4px;
+    box-shadow:
+        0 16px 36px rgba(0,0,0,.36),
+        0 0 0 5px rgba(232,196,106,.16);
+}
+
+.card-control:disabled {
+    cursor: not-allowed;
+}
+
+/* Keep primary gameplay information comfortably readable. */
+.team-score .score-label,
+.turn-badge,
+.trick-zone-heading,
+#status-banner,
+.btn,
+.previous-trick-player {
+    font-size: max(0.75rem, 12px);
+}
+
+.t-label,
+.t-caller,
+.eyebrow {
+    font-size: max(0.68rem, 11px);
+}
+
+.popover-close,
+.settings-close {
+    min-width: 40px;
+    min-height: 40px;
+}
+
+@media (forced-colors: active) {
+    .card.card-valid,
+    .card-control:focus-visible .card {
+        outline: 2px solid Highlight;
+        outline-offset: 3px;
+    }
+
+    .card.card-invalid {
+        opacity: .55;
+    }
+}

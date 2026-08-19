@@ -53,15 +53,40 @@ select:focus-visible,
     border: 0 !important;
 }
 
+/* Explicit player preference takes precedence over the device default. */
+html[data-motion="reduced"]:focus-within {
+    scroll-behavior: auto;
+}
+
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    html:focus-within {
+    html:not([data-motion="full"]):focus-within {
         scroll-behavior: auto;
     }
 
-    *, *::before, *::after {
+    html:not([data-motion="full"]) *,
+    html:not([data-motion="full"]) *::before,
+    html:not([data-motion="full"]) *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+}
+
+@media (forced-colors: active) {
+    button:focus-visible,
+    a:focus-visible,
+    select:focus-visible,
+    [tabindex]:focus-visible {
+        outline: 2px solid Highlight;
     }
 }
