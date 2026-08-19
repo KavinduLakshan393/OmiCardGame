@@ -79,16 +79,6 @@
             transition: background .2s, transform .15s;
         }
         .icon-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.08); }
-        .joker-toggle-wrap {
-            display: flex; align-items: center; gap: 5px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 10px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 0.72rem; font-weight: 700; color: #ccc;
-        }
-        .joker-toggle-wrap input { cursor: pointer; accent-color: #fbc531; }
 
         /* ===== WEST / EAST SIDE COLUMNS ===== */
         #west-area {
@@ -227,7 +217,6 @@
             white-space: nowrap;
         }
         .mini-card.red { color: #d00; }
-        .mini-card.joker { color: #8B008B; }
         .history-empty { font-size: 0.7rem; color: #666; align-self: center; }
 
         /* ===== PLAYER LABEL ===== */
@@ -351,13 +340,6 @@
                 transparent, transparent 6px,
                 rgba(255,255,255,0.04) 6px, rgba(255,255,255,0.04) 7px
             );
-        }
-
-        /* Joker card */
-        .card.joker {
-            background: linear-gradient(135deg, #3d0080, #7b00c4);
-            color: #fff;
-            border-color: #f0c040;
         }
 
         /* Trick slot played card */
@@ -562,15 +544,6 @@
         .suit-btn:hover { background: #3d5166; border-color: #fbc531; transform: translateY(-2px); }
         .suit-btn.red-s .ss { color: #e84118; }
         .suit-btn.blk-s .ss { color: #ecf0f1; }
-        #pass-trump-btn {
-            font-family: 'Outfit', sans-serif;
-            font-size: 0.85rem; font-weight: 700;
-            padding: 7px 18px; border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.25);
-            background: rgba(255,255,255,0.08); color: #bbb;
-            cursor: pointer; transition: all .2s;
-        }
-        #pass-trump-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
         /* ===== STATS MODAL ===== */
         #stats-modal {
@@ -631,7 +604,7 @@
             <span class="score-label">NS (You &amp; Partner)</span>
             <span class="score-value">
                 <span id="ns-tricks">0</span> Tricks |
-                <span id="ns-tokens">0</span> Tokens
+                <span id="ns-tokens">0</span> Tokens (Target 10)
             </span>
         </div>
 
@@ -641,14 +614,11 @@
             <span class="score-label">EW (Opponents)</span>
             <span class="score-value">
                 <span id="ew-tricks">0</span> Tricks |
-                <span id="ew-tokens">0</span> Tokens
+                <span id="ew-tokens">0</span> Tokens (Target 10)
             </span>
         </div>
 
         <div class="header-controls">
-            <label class="joker-toggle-wrap" title="Enable Joker card (wildcard that beats all)">
-                <input type="checkbox" id="joker-toggle"> 🃏 Joker
-            </label>
             <button class="icon-btn" id="mute-btn" title="Toggle sound">🔊</button>
             <button class="icon-btn" id="log-toggle-btn" title="Toggle game log">📋</button>
         </div>
@@ -789,7 +759,7 @@
 <div id="modal-overlay" class="hidden">
     <div id="modal-box">
         <h2>Choose Trump Suit</h2>
-        <p>Your first 4 cards — pick a trump suit, or pass to the next player:</p>
+        <p>Your first 4 cards — choose the trump suit:</p>
         <div id="hand-preview"></div>
         <div id="trump-opts">
             <button class="suit-btn red-s" data-suit="Hearts"><span class="ss">♥</span> Hearts</button>
@@ -797,7 +767,6 @@
             <button class="suit-btn blk-s" data-suit="Clubs"><span class="ss">♣</span> Clubs</button>
             <button class="suit-btn blk-s" data-suit="Spades"><span class="ss">♠</span> Spades</button>
         </div>
-        <button id="pass-trump-btn">Pass → West</button>
     </div>
 </div>
 
@@ -844,6 +813,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-<script src="script.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
