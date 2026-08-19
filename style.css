@@ -4,5 +4,6 @@
 @import url('./styles/table.css');
 @import url('./styles/cards.css');
 @import url('./styles/animations.css');
+@import url('./styles/results.css');
 
 .hidden { display: none !important; }

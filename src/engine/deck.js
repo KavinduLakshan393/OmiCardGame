@@ -19,6 +19,14 @@ export class Deck {
         if (autoShuffle) this.shuffle();
     }
 
+
+    static fromCards(cards, { rng = Math.random } = {}) {
+        if (!Array.isArray(cards)) throw new TypeError('cards must be an array');
+        const deck = new Deck({ rng, autoShuffle: false });
+        deck.cards = cards.map(card => new Card(card.suit, card.rank));
+        return deck;
+    }
+
     populate() {
         this.cards = [];
         for (const suit of SUITS) {

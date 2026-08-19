@@ -1,0 +1,159 @@
+/* Batch 5 — hand/match result surfaces and fair-play hint popover. */
+#hand-result-overlay,
+#match-win-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1120;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, .78);
+    backdrop-filter: blur(16px);
+}
+
+.result-card {
+    width: min(92vw, 560px);
+    max-height: 90svh;
+    overflow: auto;
+    padding: clamp(24px, 4vw, 38px);
+    border: 1px solid rgba(248,245,237,.14);
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(232,196,106,.09), transparent 38%),
+        linear-gradient(180deg, rgba(12,31,22,.99), rgba(4,14,9,.99));
+    box-shadow: 0 32px 90px rgba(0,0,0,.52);
+    text-align: center;
+    animation: resultIn var(--motion-medium, 420ms) var(--ease-cine) both;
+}
+
+.result-card h2 {
+    margin: .45rem 0 .55rem;
+    color: var(--accent-gold);
+    font: 600 clamp(2rem, 5vw, 3.2rem)/1 var(--font-brand);
+}
+
+.result-summary {
+    max-width: 44ch;
+    margin: 0 auto 1.35rem;
+    color: rgba(248,245,237,.62);
+    font: 500 .8rem/1.65 var(--font-ui);
+}
+
+.result-score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .7rem;
+    margin: 1rem 0;
+}
+.result-score-grid > div {
+    min-height: 96px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: .3rem;
+    padding: .9rem;
+    border: 1px solid rgba(248,245,237,.1);
+    border-radius: 14px;
+    background: rgba(248,245,237,.025);
+}
+.result-score-grid span,
+.result-details dt {
+    color: rgba(248,245,237,.42);
+    font: 700 .56rem/1 var(--font-ui);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+.result-score-grid strong {
+    color: var(--card-white);
+    font: 700 clamp(1.8rem, 4vw, 2.6rem)/1 var(--font-display);
+}
+
+.result-details {
+    margin: .8rem 0 1.4rem;
+    border-top: 1px solid rgba(248,245,237,.08);
+}
+.result-details > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem .15rem;
+    border-bottom: 1px solid rgba(248,245,237,.08);
+}
+.result-details dd {
+    margin: 0;
+    color: rgba(248,245,237,.82);
+    font: 600 .77rem/1.4 var(--font-ui);
+    text-align: right;
+}
+.result-actions,
+.match-win-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .6rem;
+}
+
+.hint-popover {
+    position: fixed;
+    top: 88px;
+    right: clamp(16px, 3vw, 42px);
+    z-index: 1050;
+    width: min(360px, calc(100vw - 32px));
+    padding: 1rem;
+    border: 1px solid rgba(232,196,106,.28);
+    border-radius: 16px;
+    background: rgba(4,17,11,.96);
+    box-shadow: 0 22px 56px rgba(0,0,0,.42);
+    backdrop-filter: blur(14px);
+}
+.hint-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+.hint-head strong {
+    display: block;
+    margin-top: .18rem;
+    color: var(--accent-gold);
+    font: 600 1.15rem/1.15 var(--font-brand);
+}
+#hint-message {
+    margin: .8rem 0 .1rem;
+    color: rgba(248,245,237,.72);
+    font: 500 .78rem/1.65 var(--font-ui);
+}
+
+.previous-trick-play {
+    display: grid;
+    justify-items: center;
+    gap: .35rem;
+    padding: .45rem;
+    border-radius: 10px;
+}
+.previous-trick-play.is-winner {
+    background: rgba(232,196,106,.08);
+    box-shadow: inset 0 0 0 1px rgba(232,196,106,.24);
+}
+.previous-trick-player {
+    color: rgba(248,245,237,.56);
+    font: 700 .52rem/1 var(--font-ui);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+@keyframes resultIn {
+    from { opacity: 0; transform: translateY(18px) scale(.985); }
+    to { opacity: 1; transform: none; }
+}
+
+html[data-motion="reduced"] .result-card { animation: none !important; }
+
+@media (max-width: 520px) {
+    .result-score-grid { grid-template-columns: 1fr; }
+    .hint-popover { top: 76px; }
+}
+
+/* Stats can be opened from hand/match result dialogs and must sit above them. */
+#stats-modal { z-index: 1250; }

@@ -13,6 +13,7 @@ import { dealOrderFromDealer, nextCounterClockwise, playerToDealerRight, teamOf 
 import { assertTrumpSuit, getLegalCardIndices, isLegalPlay } from './rules.js';
 import { scoreHand } from './scoring.js';
 import { cloneState } from './snapshot.js';
+import { ENGINE_SESSION_VERSION, hydrateCard, hydrateState, validateActiveCards } from './session.js';
 import { createInitialState } from './state.js';
 import { resolveTrick } from './trick.js';
 
@@ -48,6 +49,63 @@ export class GameEngine {
     /** Return a detached, JSON-safe copy of authoritative state. */
     getSnapshot() {
         return cloneState(this.state);
+    }
+
+    /**
+     * Export every rule-owned value required to resume this exact match.
+     * Presentation state (DOM, audio, timers, UI statistics) is intentionally
+     * excluded and is persisted by the application layer separately.
+     */
+    exportSession() {
+        return {
+            version: ENGINE_SESSION_VERSION,
+            initialDealerIndex: this.initialDealerIndex,
+            state: this.getSnapshot(),
+            deckCards: this._deck ? this._deck.cards.map(card => ({ suit: card.suit, rank: card.rank })) : [],
+            dealOrder: [...this._dealOrder],
+            dealCursor: this._dealCursor,
+        };
+    }
+
+    /** Restore a previously exported engine session after strict validation. */
+    restoreSession(session) {
+        if (!session || typeof session !== 'object' || session.version !== ENGINE_SESSION_VERSION) {
+            throw new TypeError('Unsupported or invalid engine session');
+        }
+
+        const state = hydrateState(session.state);
+        const deckCards = Array.isArray(session.deckCards) ? session.deckCards.map(hydrateCard) : [];
+        validateActiveCards(state, deckCards);
+
+        const dealOrder = Array.isArray(session.dealOrder) ? [...session.dealOrder] : [];
+        if (state.phase !== PHASE.IDLE && dealOrder.length !== PLAYER_COUNT) {
+            throw new TypeError('Active saved match requires a complete deal order');
+        }
+        if (dealOrder.length !== 0 && (
+            new Set(dealOrder).size !== PLAYER_COUNT ||
+            dealOrder.some(player => !Number.isInteger(player) || player < 0 || player >= PLAYER_COUNT)
+        )) {
+            throw new TypeError('Invalid saved deal order');
+        }
+        if (!Number.isInteger(session.dealCursor) || session.dealCursor < 0 || session.dealCursor > PLAYER_COUNT) {
+            throw new TypeError('Invalid saved deal cursor');
+        }
+        if (!Number.isInteger(session.initialDealerIndex) || session.initialDealerIndex < 0 || session.initialDealerIndex >= PLAYER_COUNT) {
+            throw new TypeError('Invalid saved initial dealer');
+        }
+
+        this.initialDealerIndex = session.initialDealerIndex;
+        this.state = state;
+        this._deck = state.phase === PHASE.IDLE ? null : Deck.fromCards(deckCards, { rng: this.rng });
+        this._dealOrder = dealOrder;
+        this._dealCursor = session.dealCursor;
+        return this.getSnapshot();
+    }
+
+    static fromSession(session, { rng = Math.random } = {}) {
+        const engine = new GameEngine({ rng });
+        engine.restoreSession(session);
+        return engine;
     }
 
     /**

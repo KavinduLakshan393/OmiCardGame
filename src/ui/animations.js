@@ -1,7 +1,5 @@
 import { createCardElement } from './cardRenderer.js';
-
-const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-const sleep = ms => new Promise(resolve => setTimeout(resolve, reducedMotion() ? 0 : ms));
+import { duration, isReducedMotion, wait } from './motion.js';
 
 function centerOf(rect) {
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
@@ -30,7 +28,7 @@ export function markDealtCards(container, count, playerId) {
 }
 
 export async function animateCardPlay({ card, playerId, targetElement, sourceRect = null }) {
-    if (!card || !targetElement || reducedMotion()) return;
+    if (!card || !targetElement || isReducedMotion()) return;
 
     const targetRect = targetElement.getBoundingClientRect();
     if (!targetRect.width || !targetRect.height) return;
@@ -61,7 +59,7 @@ export async function animateCardPlay({ card, playerId, targetElement, sourceRec
                 opacity: 1,
             },
         ], {
-            duration: 360,
+            duration: duration(360),
             easing: 'cubic-bezier(.19,1,.22,1)',
             fill: 'forwards',
         });
@@ -76,14 +74,14 @@ export async function animateCardPlay({ card, playerId, targetElement, sourceRec
 export async function pulseWinningCard(slot) {
     if (!slot) return;
     const card = slot.querySelector('.card');
-    if (!card || reducedMotion()) return;
+    if (!card || isReducedMotion()) return;
     card.classList.add('trick-winner-pulse');
-    await sleep(650);
+    await wait(650);
     card.classList.remove('trick-winner-pulse');
 }
 
 export async function animateTrickCollection({ winnerId, slotElements }) {
-    if (reducedMotion()) return;
+    if (isReducedMotion()) return;
     const winner = document.getElementById(`player-${winnerId}`);
     if (!winner) return;
     const destination = centerOf(winner.getBoundingClientRect());
@@ -105,7 +103,7 @@ export async function animateTrickCollection({ winnerId, slotElements }) {
     }
 
     if (!clones.length) return;
-    await sleep(25);
+    await wait(25);
 
     clones.forEach(({ clone, rect }, index) => {
         clone.style.left = `${destination.x - rect.width / 2}px`;
@@ -114,7 +112,7 @@ export async function animateTrickCollection({ winnerId, slotElements }) {
         clone.style.opacity = '.18';
     });
 
-    await sleep(440);
+    await wait(440);
     clones.forEach(({ clone, source }) => {
         clone.remove();
         source.style.opacity = '';

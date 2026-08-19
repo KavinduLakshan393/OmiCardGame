@@ -99,6 +99,48 @@ export class SinglePlayerController {
         });
     }
 
+    /**
+     * Continue an engine restored from a persisted session.
+     *
+     * A browser may close between any two presentation hooks. Resume therefore
+     * handles every rule phase, including a four-card trick waiting to be
+     * collected or a hand waiting to be scored.
+     */
+    resumeMatch() {
+        return this.#enqueue(async () => {
+            if (this.state.phase === PHASE.IDLE) {
+                throw new OmiRuleError('NO_ACTIVE_MATCH', 'There is no active match to resume');
+            }
+            if (this.state.phase === PHASE.MATCH_COMPLETE || this.state.phase === PHASE.HAND_COMPLETE) {
+                return this.getSnapshot();
+            }
+            if ([PHASE.DEAL_INITIAL, PHASE.DEAL_REMAINING].includes(this.state.phase)) {
+                await this.#dealCurrentPhase();
+                if (this.state.phase === PHASE.TRUMP_SELECTION) {
+                    await this.#continueFromTrumpSelection();
+                } else if (this.state.phase === PHASE.PLAYING) {
+                    await this.#driveTurnsUntilHumanOrHandEnd();
+                }
+                return this.getSnapshot();
+            }
+            if (this.state.phase === PHASE.TRUMP_SELECTION) {
+                await this.#continueFromTrumpSelection();
+                return this.getSnapshot();
+            }
+            if (this.state.phase === PHASE.HAND_SCORING) {
+                await this.#scorePendingHand();
+                return this.getSnapshot();
+            }
+            if (this.state.phase === PHASE.PLAYING && this.state.currentTrick.length === PLAYER_COUNT) {
+                await this.#finishCurrentTrick();
+            }
+            if (this.state.phase === PHASE.PLAYING) {
+                await this.#driveTurnsUntilHumanOrHandEnd();
+            }
+            return this.getSnapshot();
+        });
+    }
+
     selectTrump(suit) {
         return this.#enqueue(async () => {
             if (this.state.trumpCaller !== this.humanPlayerId) {
@@ -254,15 +296,19 @@ export class SinglePlayerController {
         });
 
         if (this.state.phase === PHASE.HAND_SCORING) {
-            await this.hooks.beforeHandScore({ state: this.getSnapshot() });
-            const scoreResult = await this.#dispatch({ type: ACTION.SCORE_HAND });
-            const handEvent = scoreResult.events.find(event => event.type === EVENT.HAND_COMPLETED);
-            await this.hooks.afterHandScored({
-                event: handEvent,
-                events: scoreResult.events,
-                state: scoreResult.state,
-            });
+            await this.#scorePendingHand();
         }
+    }
+
+    async #scorePendingHand() {
+        await this.hooks.beforeHandScore({ state: this.getSnapshot() });
+        const scoreResult = await this.#dispatch({ type: ACTION.SCORE_HAND });
+        const handEvent = scoreResult.events.find(event => event.type === EVENT.HAND_COMPLETED);
+        await this.hooks.afterHandScored({
+            event: handEvent,
+            events: scoreResult.events,
+            state: scoreResult.state,
+        });
     }
 
     async #dispatch(action) {

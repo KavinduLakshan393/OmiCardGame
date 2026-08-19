@@ -44,6 +44,11 @@
                 <p class="menu-subtitle">A Sri Lankan card game</p>
 
                 <nav class="menu-actions" aria-label="Main menu">
+                    <a class="menu-action menu-action-primary continue-action" id="continue-match-link" href="game.html?resume=1" hidden>
+                        <span>Continue Match</span>
+                        <span class="action-caption" id="continue-match-caption">Resume saved game</span>
+                    </a>
+
                     <a class="menu-action menu-action-primary" id="play-solo-link" href="game.html">
                         <span>Play Solo</span>
                         <span class="action-caption">Single Player</span>
@@ -96,9 +101,27 @@
                         <option value="off">Off</option>
                     </select>
                 </div>
+
+                <div class="setting-field">
+                    <label for="animation-speed-setting">Animation speed</label>
+                    <select id="animation-speed-setting">
+                        <option value="relaxed">Relaxed</option>
+                        <option value="normal">Normal</option>
+                        <option value="fast">Fast</option>
+                    </select>
+                </div>
+
+                <div class="setting-field">
+                    <label for="reduced-motion-setting">Motion</label>
+                    <select id="reduced-motion-setting">
+                        <option value="system">Use device setting</option>
+                        <option value="reduce">Reduce motion</option>
+                        <option value="full">Full motion</option>
+                    </select>
+                </div>
             </div>
 
-            <p class="settings-note">Animation speed and the full persistent settings subsystem are scheduled for the dedicated settings patch. Reduced-motion preferences are already respected automatically through the operating system/browser setting.</p>
+            <p class="settings-note">Preferences are saved automatically and apply to new and resumed solo matches.</p>
         </section>
     </div>
 

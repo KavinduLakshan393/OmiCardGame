@@ -10,3 +10,4 @@ export * from './scoring.js';
 export * from './snapshot.js';
 export * from './state.js';
 export * from './GameEngine.js';
+export * from './session.js';

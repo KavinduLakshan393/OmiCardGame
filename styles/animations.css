@@ -1,7 +1,7 @@
 /* Batch 4 — presentation motion. No rules depend on these durations. */
 .deal-in {
     animation: dealIn var(--motion-medium, 420ms) var(--ease-cine) both;
-    animation-delay: calc(var(--deal-index, 0) * 45ms);
+    animation-delay: calc(var(--deal-index, 0) * var(--deal-stagger, 45ms));
 }
 @keyframes dealIn {
     from { opacity: 0; transform: translate(var(--deal-x, 0), var(--deal-y, -90px)) rotate(var(--deal-rotate, -8deg)) scale(.72); }
@@ -22,10 +22,10 @@
     z-index: 1450 !important;
     pointer-events: none !important;
     transition:
-        left 420ms var(--ease-cine),
-        top 420ms var(--ease-cine),
-        transform 420ms var(--ease-cine),
-        opacity 360ms ease;
+        left var(--motion-medium, 420ms) var(--ease-cine),
+        top var(--motion-medium, 420ms) var(--ease-cine),
+        transform var(--motion-medium, 420ms) var(--ease-cine),
+        opacity var(--motion-fast, 220ms) ease;
 }
 
 .trick-winner-pulse { animation: winnerPulse 650ms var(--ease-cine); }
@@ -53,8 +53,6 @@
 }
 #trick-win-overlay.show { opacity: 1; transform: translate(-50%, -50%) translateY(0) scale(1); }
 
-#round-overlay,
-#match-win-overlay,
 #modal-overlay,
 #stats-modal {
     position: fixed;
@@ -66,8 +64,6 @@
     background: rgba(0,0,0,.76);
     backdrop-filter: blur(14px);
 }
-#round-overlay-box,
-#match-win-box,
 #modal-box,
 #stats-box {
     width: min(92vw, 520px);
@@ -82,10 +78,6 @@
     animation: modalIn .38s var(--ease-cine) both;
 }
 @keyframes modalIn { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
-#round-overlay-msg { color: var(--accent-gold); font: 600 clamp(1.1rem, 3vw, 1.5rem)/1.35 var(--font-brand); }
-#match-winner-text { margin-top: .5rem; color: var(--accent-gold); font: 600 clamp(2rem, 5vw, 3rem)/1 var(--font-brand); }
-#match-stats-text { margin: 1rem 0 1.4rem; color: rgba(248,245,237,.62); font: 500 .82rem/1.5 var(--font-ui); }
-.match-win-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: .6rem; }
 
 #modal-box h2, #stats-box h2 { margin: .45rem 0 .5rem; font: 600 clamp(2rem, 4vw, 2.7rem)/1 var(--font-brand); }
 #modal-box p { margin: 0 auto 1rem; max-width: 38ch; color: rgba(248,245,237,.58); font: 500 .76rem/1.55 var(--font-ui); }
@@ -122,6 +114,18 @@
 .stats-close-wrap { margin-top: 1.2rem; display: flex; justify-content: center; }
 
 @media (prefers-reduced-motion: reduce) {
-    .deal-in, .trick-winner-pulse, #round-overlay-box, #match-win-box, #modal-box, #stats-box { animation: none !important; }
+    .deal-in, .trick-winner-pulse, #modal-box, #stats-box { animation: none !important; }
     .play-flight, .collect-clone { transition-duration: 1ms !important; }
+}
+
+/* Explicit in-game motion preference (Patch 12). */
+html[data-motion="reduced"] .deal-in,
+html[data-motion="reduced"] .trick-winner-pulse,
+html[data-motion="reduced"] #modal-box,
+html[data-motion="reduced"] #stats-box {
+    animation: none !important;
+}
+html[data-motion="reduced"] .play-flight,
+html[data-motion="reduced"] .collect-clone {
+    transition-duration: 1ms !important;
 }

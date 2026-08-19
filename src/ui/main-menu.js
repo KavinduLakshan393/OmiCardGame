@@ -1,26 +1,7 @@
-const PREFERENCES_KEY = 'omi.menu.preferences.v1';
+import { loadSettings, saveSettings } from '../storage/settings.js';
+import { loadGame } from '../storage/saveGame.js';
+
 const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
-
-const DEFAULT_PREFERENCES = Object.freeze({
-    difficulty: 'smart',
-    sound: 'on',
-});
-
-function loadPreferences() {
-    try {
-        const saved = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? '{}');
-        return {
-            difficulty: saved.difficulty === 'casual' ? 'casual' : DEFAULT_PREFERENCES.difficulty,
-            sound: saved.sound === 'off' ? 'off' : DEFAULT_PREFERENCES.sound,
-        };
-    } catch {
-        return { ...DEFAULT_PREFERENCES };
-    }
-}
-
-function savePreferences(preferences) {
-    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
-}
 
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsButton = document.getElementById('settings-button');
@@ -28,24 +9,38 @@ const settingsMenuButton = document.getElementById('settings-menu-button');
 const settingsClose = document.getElementById('settings-close');
 const difficultySetting = document.getElementById('difficulty-setting');
 const soundSetting = document.getElementById('sound-setting');
+const animationSpeedSetting = document.getElementById('animation-speed-setting');
+const reducedMotionSetting = document.getElementById('reduced-motion-setting');
 const playSoloLink = document.getElementById('play-solo-link');
+const continueMatchLink = document.getElementById('continue-match-link');
+const continueMatchCaption = document.getElementById('continue-match-caption');
 const tutorialLink = document.getElementById('tutorial-link');
 
-let preferences = loadPreferences();
+let preferences = loadSettings();
 let lastFocusedElement = null;
 
 function updatePlayLink() {
-    const params = new URLSearchParams({
-        difficulty: preferences.difficulty,
-        sound: preferences.sound,
-    });
-    playSoloLink.href = `game.html?${params.toString()}`;
+    // Settings are persistent now. The URL remains clean and shareable.
+    playSoloLink.href = 'game.html';
+}
+
+function syncContinueMatch() {
+    const saved = loadGame();
+    continueMatchLink.hidden = !saved;
+    if (saved) {
+        const handNumber = saved.engineSession.state?.handNumber ?? 1;
+        continueMatchCaption.textContent = `Resume hand ${handNumber}`;
+    }
 }
 
 function syncControls() {
+    preferences = loadSettings();
     difficultySetting.value = preferences.difficulty;
-    soundSetting.value = preferences.sound;
+    soundSetting.value = preferences.sound ? 'on' : 'off';
+    animationSpeedSetting.value = preferences.animationSpeed;
+    reducedMotionSetting.value = preferences.reducedMotion;
     updatePlayLink();
+    syncContinueMatch();
 
     const tutorialComplete = localStorage.getItem(TUTORIAL_COMPLETE_KEY) === 'true';
     tutorialLink.dataset.complete = String(tutorialComplete);
@@ -63,11 +58,12 @@ function closeSettings() {
 }
 
 function commitPreferences() {
-    preferences = {
-        difficulty: difficultySetting.value === 'casual' ? 'casual' : 'smart',
-        sound: soundSetting.value === 'off' ? 'off' : 'on',
-    };
-    savePreferences(preferences);
+    preferences = saveSettings({
+        difficulty: difficultySetting.value,
+        sound: soundSetting.value !== 'off',
+        animationSpeed: animationSpeedSetting.value,
+        reducedMotion: reducedMotionSetting.value,
+    });
     updatePlayLink();
 }
 
@@ -75,8 +71,9 @@ settingsButton.addEventListener('click', openSettings);
 settingsMenuButton.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', closeSettings);
 
-difficultySetting.addEventListener('change', commitPreferences);
-soundSetting.addEventListener('change', commitPreferences);
+for (const control of [difficultySetting, soundSetting, animationSpeedSetting, reducedMotionSetting]) {
+    control.addEventListener('change', commitPreferences);
+}
 
 settingsBackdrop.addEventListener('click', event => {
     if (event.target === settingsBackdrop) closeSettings();

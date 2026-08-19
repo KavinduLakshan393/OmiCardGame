@@ -19,23 +19,56 @@ import {
     teamOf,
 } from './src/engine/index.js';
 import { AI_DIFFICULTY } from './src/ai/AIPlayer.js';
+import { AudioManager } from './src/audio/AudioManager.js';
 import { SinglePlayerController } from './src/controllers/SinglePlayerController.js';
-import { createCardElement, createMiniCardElement } from './src/ui/cardRenderer.js';
+import {
+    clearSavedGame,
+    createSaveRecord,
+    loadGame,
+    normalizeStats,
+    saveGame,
+} from './src/storage/saveGame.js';
+import { loadSettings, saveSettings } from './src/storage/settings.js';
 import { animateCardPlay, animateTrickCollection, markDealtCards, pulseWinningCard } from './src/ui/animations.js';
+import { createCardElement, createMiniCardElement } from './src/ui/cardRenderer.js';
+import { buildHumanHint } from './src/ui/hints.js';
+import { configureMotion, wait as delay } from './src/ui/motion.js';
+import { handResultView, matchResultView } from './src/ui/results.js';
 
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-/* Batch 3 menu preferences are passed as query parameters by main-menu.html.
- * The dedicated settings subsystem in Patch 12 will replace this lightweight
- * bootstrap bridge without changing the controller API. */
 const gameParams = new URLSearchParams(window.location.search);
-const initialDifficulty = gameParams.get('difficulty') === 'casual'
+let settings = loadSettings();
+
+// Preserve compatibility with Batch 3 links while making Patch 12 settings
+// authoritative and persistent from this point forward.
+if (gameParams.has('difficulty') || gameParams.has('sound')) {
+    settings = saveSettings({
+        ...settings,
+        difficulty: gameParams.get('difficulty') === 'casual' ? 'casual' : settings.difficulty,
+        sound: gameParams.has('sound') ? gameParams.get('sound') !== 'off' : settings.sound,
+    });
+}
+configureMotion(settings);
+
+const wantsResume = gameParams.get('resume') === '1';
+let resumeRecord = wantsResume ? loadGame() : null;
+let engine = new GameEngine();
+
+if (resumeRecord) {
+    try {
+        engine = GameEngine.fromSession(resumeRecord.engineSession);
+    } catch (error) {
+        console.warn('Discarding an invalid Omi save.', error);
+        clearSavedGame();
+        resumeRecord = null;
+    }
+}
+
+const initialDifficulty = settings.difficulty === 'casual'
     ? AI_DIFFICULTY.CASUAL
     : AI_DIFFICULTY.SMART;
-const initiallyMuted = gameParams.get('sound') === 'off';
 
 const controller = new SinglePlayerController({
-    engine: new GameEngine(),
+    engine,
     humanPlayerId: 0,
     difficulty: initialDifficulty,
     hooks: {
@@ -55,80 +88,45 @@ const controller = new SinglePlayerController({
 
 const game = controller.engine;
 const state = controller.state;
+const Sound = new AudioManager({ enabled: settings.sound });
 
-/* Presentation/session-only state. None of these values participate in rules. */
-const runtime = {
-    processing: false,
-    dealing: false,
-    muted: initiallyMuted,
-    stats: {
+function freshStats() {
+    return normalizeStats({
         tricksWonByPlayer: [0, 0, 0, 0],
         roundsWon: [0, 0],
         kaputhis: [0, 0],
         defends: [0, 0],
         trumpsCalled: [0, 0, 0, 0],
-    },
+        startedAt: Date.now(),
+    });
+}
+
+/* Presentation/session-only state. None of these values participate in rules. */
+const runtime = {
+    processing: false,
+    dealing: false,
+    muted: !settings.sound,
+    stats: resumeRecord ? normalizeStats(resumeRecord.stats) : freshStats(),
     gameLog: [],
     selectedCardIndex: null,
     pendingPlayRect: null,
 };
 
-/* ===== SOUND ENGINE (Web Audio API — procedural, no files) ===== */
-const Sound = {
-    ctx: null,
-
-    init() {
-        if (!this.ctx) {
-            try {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            } catch(e) { /* no audio support */ }
-        }
-    },
-
-    _tone(freq, type, gain, start, duration) {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const g   = this.ctx.createGain();
-        osc.connect(g);
-        g.connect(this.ctx.destination);
-        osc.type = type || 'sine';
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime + start);
-        g.gain.setValueAtTime(0, this.ctx.currentTime + start);
-        g.gain.linearRampToValueAtTime(gain, this.ctx.currentTime + start + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + start + duration);
-        osc.start(this.ctx.currentTime + start);
-        osc.stop(this.ctx.currentTime + start + duration + 0.05);
-    },
-
-    play(type) {
-        if (runtime.muted || !this.ctx) return;
-        switch (type) {
-            case 'card':
-                this._tone(380, 'triangle', 0.18, 0, 0.12);
-                break;
-            case 'trick':
-                [523, 659, 784].forEach((f, i) => this._tone(f, 'sine', 0.28, i * 0.12, 0.25));
-                break;
-            case 'win':
-                [523, 659, 784, 1047].forEach((f, i) => this._tone(f, 'sine', 0.32, i * 0.14, 0.35));
-                break;
-            case 'lose':
-                [392, 330, 262].forEach((f, i) => this._tone(f, 'triangle', 0.22, i * 0.17, 0.35));
-                break;
-            case 'kaputhi':
-                [523, 659, 784, 1047, 1319].forEach((f, i) => this._tone(f, 'sine', 0.38, i * 0.13, 0.45));
-                break;
-            case 'invalid':
-                this._tone(110, 'square', 0.25, 0, 0.15);
-                break;
-            case 'trump':
-                this._tone(220, 'sine', 0.28, 0, 0.10);
-                this._tone(440, 'sine', 0.28, 0.12, 0.10);
-                this._tone(880, 'sine', 0.28, 0.26, 0.25);
-                break;
-        }
+function persistActiveMatch() {
+    if ([PHASE.IDLE, PHASE.MATCH_COMPLETE].includes(state.phase)) {
+        if (state.phase === PHASE.MATCH_COMPLETE) clearSavedGame();
+        return;
     }
-};
+
+    try {
+        saveGame(createSaveRecord({
+            engineSession: game.exportSession(),
+            stats: runtime.stats,
+        }));
+    } catch (error) {
+        console.warn('Unable to persist Omi match.', error);
+    }
+}
 
 /* ===== UI HELPERS ===== */
 function setStatus(msg) {
@@ -332,7 +330,15 @@ function updateTrickHistoryPanel() {
 
     if (button) button.disabled = false;
     if (title) title.textContent = `Trick ${previous.trickNum} · ${PLAYER_NAMES[previous.winner]} won`;
-    previous.plays.forEach(({ card }) => panel.appendChild(createMiniCardElement(card)));
+    previous.plays.forEach(({ player, card }) => {
+        const play = document.createElement('div');
+        play.className = `previous-trick-play${player === previous.winner ? ' is-winner' : ''}`;
+        const label = document.createElement('span');
+        label.className = 'previous-trick-player';
+        label.textContent = PLAYER_NAMES[player];
+        play.append(label, createMiniCardElement(card));
+        panel.appendChild(play);
+    });
 }
 
 /* ===== GAME LOG ===== */
@@ -401,6 +407,7 @@ function handleEngineEvents(events) {
                 break;
         }
     }
+    persistActiveMatch();
 }
 
 async function handleDealBatchAnimation({ event }) {
@@ -477,6 +484,7 @@ async function handleBeforeTrickComplete({ preview }) {
 async function handleAfterTrickComplete({ event }) {
     runtime.stats.tricksWonByPlayer[event.winner]++;
     runtime.processing = false;
+    persistActiveMatch();
     refreshUI();
     setStatus(`${PLAYER_NAMES[event.winner]} won trick #${event.trickNum}!`);
     await delay(event.handPlayComplete ? 1000 : 600);
@@ -489,6 +497,7 @@ async function handleBeforeHandScore() {
 async function handleAfterHandScored({ event }) {
     runtime.processing = false;
     presentHandResult(event.result);
+    persistActiveMatch();
 }
 
 /* ===== HAND SORT ===== */
@@ -501,6 +510,7 @@ function sortHand() {
     renderHand(0);
     highlightValidCards();
     appendLog('Hand sorted by suit & rank', 'info');
+    persistActiveMatch();
 }
 
 /* ===== GAME FLOW ===== */
@@ -512,6 +522,11 @@ document.getElementById('start-btn').addEventListener('click', () => {
 function startRound() {
     if (state.matchOver || controller.isBusy) return;
     if (![PHASE.IDLE, PHASE.HAND_COMPLETE].includes(state.phase)) return;
+
+    if (state.phase === PHASE.IDLE) {
+        clearSavedGame();
+        runtime.stats = freshStats();
+    }
 
     runtime.processing = false;
     runtime.dealing = true;
@@ -613,38 +628,22 @@ function showTrickWinBanner(msg) {
 }
 
 function presentHandResult(result) {
-    const ns = state.teamTricks[0];
-    const ew = state.teamTricks[1];
-
-    let msg;
-    if (result.tied) {
-        const carryLabel = result.nextCarryTokens === 1 ? 'token' : 'tokens';
-        msg = `TIED 4–4! No tokens awarded. ${result.nextCarryTokens} carry ${carryLabel} for the next decisive hand.`;
-        Sound.play('card');
-    } else {
+    if (!result.tied) {
         runtime.stats.roundsWon[result.winnerTeam]++;
         if (result.isDefense) runtime.stats.defends[result.winnerTeam]++;
         if (result.isKapothi) runtime.stats.kaputhis[result.winnerTeam]++;
-
-        const teamLabel = result.winnerTeam === 0 ? 'NS' : 'EW';
-        const carryText = result.carryAwarded > 0
-            ? ` (${result.baseTokens} base + ${result.carryAwarded} carry)`
-            : '';
-
-        if (result.isKapothi) {
-            msg = `KAPOTHI! ${teamLabel} swept all 8 tricks! +${result.tokensAwarded} tokens${carryText}`;
-            Sound.play('kaputhi');
-        } else if (result.isDefense) {
-            msg = `DEFENDED! ${teamLabel} +${result.tokensAwarded} tokens${carryText} (NS ${ns} – EW ${ew})`;
-            Sound.play('lose');
-        } else {
-            msg = `${teamLabel} won! +${result.tokensAwarded} token${result.tokensAwarded === 1 ? '' : 's'}${carryText} (NS ${ns} – EW ${ew})`;
-            Sound.play('win');
-        }
     }
 
-    appendLog(`── ${msg} ──`, 'result');
-    setStatus(msg);
+    if (result.tied) {
+        Sound.play('card');
+    } else if (result.isKapothi) {
+        Sound.play('kapothi');
+    } else if (result.winnerTeam === 0) {
+        Sound.play('win');
+    } else {
+        Sound.play('lose');
+    }
+
     updateScoreboard();
     updateTrickHistoryPanel();
 
@@ -653,37 +652,42 @@ function presentHandResult(result) {
         return;
     }
 
-    const roundOverlay = document.getElementById('round-overlay');
-    document.getElementById('round-overlay-msg').textContent = msg;
-    roundOverlay.classList.remove('hidden');
-    if (result.isKapothi) fireConfetti();
-    setTimeout(() => roundOverlay.classList.add('hidden'), 2200);
+    const view = handResultView({ result, state });
+    appendLog(`── ${view.title}: ${view.tokenAward} ──`, 'result');
+    setStatus(`${view.title}. ${view.tokenAward}.`);
 
-    setTimeout(() => {
-        const btn = document.getElementById('start-btn');
-        btn.textContent = 'Next Hand';
-        btn.hidden = false;
-        document.getElementById('sort-btn').hidden = true;
-        document.getElementById('show-stats-btn').hidden = false;
-    }, 2300);
+    document.getElementById('hand-result-eyebrow').textContent = view.eyebrow;
+    document.getElementById('hand-result-title').textContent = view.title;
+    document.getElementById('hand-result-summary').textContent = view.summary;
+    document.getElementById('hand-result-tricks').textContent = view.trickScore;
+    document.getElementById('hand-result-tokens').textContent = view.tokenAward;
+    document.getElementById('hand-result-carry').textContent = view.carry;
+    document.getElementById('hand-result-dealer').textContent = view.nextDealer;
+    document.getElementById('hand-result-overlay').classList.remove('hidden');
+
+    if (result.isKapothi) fireConfetti();
 }
 
 function showMatchWin() {
     if (!state.matchOver) return false;
 
-    const nsWon = state.tokens[0] >= state.matchTokenTarget;
-    const winnerLabel = nsWon ? 'NS (You & Partner)' : 'EW (Opponents)';
-    appendLog(`🏆 MATCH WON by ${winnerLabel}!`, 'match');
+    const view = matchResultView({ state, stats: runtime.stats });
+    clearSavedGame();
+    appendLog(`🏆 MATCH WON by ${view.title}!`, 'match');
 
-    setTimeout(() => {
-        const overlay = document.getElementById('match-win-overlay');
-        document.getElementById('match-winner-text').textContent = `🏆 ${winnerLabel} wins the match!`;
-        document.getElementById('match-stats-text').textContent =
-            `NS: ${state.tokens[0]} tokens | EW: ${state.tokens[1]} tokens | Target: ${state.matchTokenTarget}`;
-        overlay.classList.remove('hidden');
-        if (nsWon) fireConfetti();
-    }, 800);
+    document.getElementById('hand-result-overlay').classList.add('hidden');
+    document.getElementById('match-result-eyebrow').textContent = view.eyebrow;
+    document.getElementById('match-winner-text').textContent = view.title;
+    document.getElementById('match-result-summary').textContent = view.winnerTeam === 0
+        ? 'You and your partner reached the 10-token target first.'
+        : 'The opposing partnership reached the 10-token target first.';
+    document.getElementById('match-final-score').textContent = view.finalScore;
+    document.getElementById('match-hands-played').textContent = view.handsPlayed;
+    document.getElementById('match-kapothis').textContent = `${view.kapothis[0]} – ${view.kapothis[1]}`;
+    document.getElementById('match-duration').textContent = view.duration;
+    document.getElementById('match-win-overlay').classList.remove('hidden');
 
+    if (view.winnerTeam === 0) fireConfetti();
     return true;
 }
 
@@ -732,6 +736,7 @@ function showStatsPanel() {
 /* Reflect menu-selected sound preference before the first interaction. */
 const initialMuteButton = document.getElementById('mute-btn');
 if (initialMuteButton) initialMuteButton.textContent = runtime.muted ? '🔇' : '🔊';
+Sound.setEnabled(!runtime.muted);
 
 /* ===== EVENT LISTENERS ===== */
 
@@ -757,18 +762,42 @@ document.getElementById('stats-close-btn').addEventListener('click', () => {
 document.getElementById('mute-btn').addEventListener('click', () => {
     Sound.init();
     runtime.muted = !runtime.muted;
+    Sound.setEnabled(!runtime.muted);
+    settings = saveSettings({ ...settings, sound: !runtime.muted });
     document.getElementById('mute-btn').textContent = runtime.muted ? '🔇' : '🔊';
+});
+
+// Fair-information hint popover
+const hintPopover = document.getElementById('hint-popover');
+document.getElementById('hint-btn').addEventListener('click', () => {
+    previousTrickPopover?.classList.add('hidden');
+    const hint = buildHumanHint(controller.getSnapshot(), 0);
+    document.getElementById('hint-title').textContent = hint.title;
+    document.getElementById('hint-message').textContent = hint.message;
+    hintPopover.classList.remove('hidden');
+});
+document.getElementById('hint-close').addEventListener('click', () => {
+    hintPopover.classList.add('hidden');
 });
 
 // Previous trick popover
 const previousTrickPopover = document.getElementById('previous-trick-popover');
 document.getElementById('previous-trick-btn').addEventListener('click', () => {
+    hintPopover.classList.add('hidden');
     updateTrickHistoryPanel();
     previousTrickPopover.classList.toggle('hidden');
 });
 document.getElementById('previous-trick-close').addEventListener('click', () => {
     previousTrickPopover.classList.add('hidden');
 });
+
+// Hand result actions
+function closeHandResultAndStartNext() {
+    document.getElementById('hand-result-overlay').classList.add('hidden');
+    startRound();
+}
+document.getElementById('hand-next-btn').addEventListener('click', closeHandResultAndStartNext);
+document.getElementById('hand-stats-btn').addEventListener('click', showStatsPanel);
 
 // Play again (match win)
 document.getElementById('match-play-again-btn').addEventListener('click', () => {
@@ -779,13 +808,8 @@ document.getElementById('match-play-again-btn').addEventListener('click', () => 
         runtime.processing = false;
         runtime.dealing = false;
         runtime.gameLog = [];
-        runtime.stats = {
-            tricksWonByPlayer: [0, 0, 0, 0],
-            roundsWon: [0, 0],
-            kaputhis: [0, 0],
-            defends: [0, 0],
-            trumpsCalled: [0, 0, 0, 0],
-        };
+        runtime.stats = freshStats();
+        clearSavedGame();
         document.getElementById('game-log-list').innerHTML = '';
         document.getElementById('show-stats-btn').hidden = true;
         refreshUI();
@@ -795,3 +819,42 @@ document.getElementById('match-play-again-btn').addEventListener('click', () => 
         document.getElementById('sort-btn').hidden = true;
     }).catch(error => handleControllerError(error, 'Unable to reset the match.'));
 });
+
+
+// Close non-modal helper popovers without interrupting the match.
+document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    hintPopover.classList.add('hidden');
+    previousTrickPopover.classList.add('hidden');
+});
+
+window.addEventListener('pagehide', persistActiveMatch);
+
+function bootstrapGamePage() {
+    refreshUI();
+
+    if (!resumeRecord) {
+        setStatus('Ready for a match?');
+        return;
+    }
+
+    const startButton = document.getElementById('start-btn');
+    const sortButton = document.getElementById('sort-btn');
+    sortButton.hidden = state.hands[0].length === 0;
+
+    if (state.phase === PHASE.HAND_COMPLETE) {
+        startButton.textContent = 'Next Hand';
+        startButton.hidden = false;
+        document.getElementById('show-stats-btn').hidden = false;
+        setStatus(`Saved match restored after hand ${state.handNumber}.`);
+        return;
+    }
+
+    startButton.hidden = true;
+    setStatus('Resuming saved match…');
+    controller.resumeMatch()
+        .then(() => persistActiveMatch())
+        .catch(error => handleControllerError(error, 'Unable to resume the saved match.'));
+}
+
+bootstrapGamePage();
