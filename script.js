@@ -36,6 +36,7 @@ import { buildHumanHint } from './src/ui/hints.js';
 import { activateFocusTrap, deactivateFocusTrap } from './src/ui/focusTrap.js';
 import { configureMotion, wait as delay } from './src/ui/motion.js';
 import { handResultView, matchResultView } from './src/ui/results.js';
+import { saveMatchResult } from './src/storage/history.js';
 
 const gameParams = new URLSearchParams(window.location.search);
 let settings = loadSettings();
@@ -721,6 +722,17 @@ function showMatchWin() {
     clearSavedGame();
     appendLog(`🏆 MATCH WON by ${view.title}!`, 'match');
 
+    // Persist to match history and compute rating delta
+    const elapsedMs = Math.max(0, Date.now() - (runtime.stats.startedAt ?? Date.now()));
+    const { ratingDelta } = saveMatchResult({
+        outcome: view.winnerTeam === 0 ? 'win' : 'loss',
+        finalScore: [state.tokens[0], state.tokens[1]],
+        handsPlayed: state.handNumber,
+        kapothisFor: runtime.stats.kaputhis[0] ?? 0,
+        kapothisAgainst: runtime.stats.kaputhis[1] ?? 0,
+        durationMs: elapsedMs,
+    });
+
     closeModalSurface(document.getElementById('hand-result-overlay'), { restoreFocus: false });
     document.getElementById('match-result-eyebrow').textContent = view.eyebrow;
     document.getElementById('match-winner-text').textContent = view.title;
@@ -731,6 +743,16 @@ function showMatchWin() {
     document.getElementById('match-hands-played').textContent = view.handsPlayed;
     document.getElementById('match-kapothis').textContent = `${view.kapothis[0]} – ${view.kapothis[1]}`;
     document.getElementById('match-duration').textContent = view.duration;
+
+    // Show rating delta badge if element exists
+    const ratingBadge = document.getElementById('match-rating-delta');
+    if (ratingBadge) {
+        const sign = ratingDelta >= 0 ? '+' : '';
+        ratingBadge.textContent = `${sign}${ratingDelta} Rating`;
+        ratingBadge.className = `rating-delta-badge ${ratingDelta >= 0 ? 'rating-delta--win' : 'rating-delta--loss'}`;
+        ratingBadge.hidden = false;
+    }
+
     const matchOverlay = document.getElementById('match-win-overlay');
     openModalSurface(matchOverlay, { initialFocus: document.getElementById('match-play-again-btn') });
 
@@ -825,7 +847,86 @@ document.getElementById('mute-btn').addEventListener('click', () => {
     Sound.setEnabled(!runtime.muted);
     settings = saveSettings({ ...settings, sound: !runtime.muted });
     updateMuteButton();
+    syncSettingsModal();
 });
+
+// ── Pause Menu ────────────────────────────────────────────────────────
+const pauseMenu = document.getElementById('pause-menu');
+const menuBtn = document.getElementById('menu-btn');
+
+function openPauseMenu() {
+    menuBtn.setAttribute('aria-expanded', 'true');
+    openModalSurface(pauseMenu, {
+        initialFocus: document.getElementById('pause-continue-btn'),
+        onEscape: closePauseMenu,
+    });
+}
+function closePauseMenu({ restoreFocus = true } = {}) {
+    menuBtn.setAttribute('aria-expanded', 'false');
+    closeModalSurface(pauseMenu, { restoreFocus });
+}
+
+menuBtn.addEventListener('click', () => {
+    if (!pauseMenu.classList.contains('hidden')) {
+        closePauseMenu();
+    } else {
+        openPauseMenu();
+    }
+});
+document.getElementById('pause-continue-btn').addEventListener('click', () => closePauseMenu());
+document.getElementById('pause-stats-btn').addEventListener('click', () => {
+    closePauseMenu({ restoreFocus: false });
+    showStatsPanel();
+});
+document.getElementById('pause-settings-btn').addEventListener('click', () => {
+    closePauseMenu({ restoreFocus: false });
+    openSettingsModal();
+});
+// "Back to Main Menu" is a plain <a> — no extra JS needed.
+
+// ── Settings Modal ────────────────────────────────────────────────────
+const settingsModal = document.getElementById('settings-modal');
+const soundSettingsBtn = document.getElementById('settings-sound-btn');
+const difficultyBtn = document.getElementById('settings-difficulty-btn');
+const animSelect = document.getElementById('settings-anim-select');
+
+function syncSettingsModal() {
+    soundSettingsBtn.textContent = runtime.muted ? 'Off' : 'On';
+    soundSettingsBtn.setAttribute('aria-checked', String(!runtime.muted));
+    difficultyBtn.textContent = settings.difficulty === 'casual' ? 'Casual' : 'Smart';
+    difficultyBtn.setAttribute('aria-checked', String(settings.difficulty !== 'casual'));
+    animSelect.value = settings.animationSpeed ?? 'normal';
+}
+
+function openSettingsModal() {
+    syncSettingsModal();
+    openModalSurface(settingsModal, {
+        initialFocus: document.getElementById('settings-close-btn'),
+        onEscape: closeSettingsModal,
+    });
+}
+function closeSettingsModal() {
+    closeModalSurface(settingsModal);
+}
+
+soundSettingsBtn.addEventListener('click', () => {
+    runtime.muted = !runtime.muted;
+    Sound.setEnabled(!runtime.muted);
+    settings = saveSettings({ ...settings, sound: !runtime.muted });
+    updateMuteButton();
+    syncSettingsModal();
+});
+difficultyBtn.addEventListener('click', () => {
+    const newDiff = settings.difficulty === 'casual' ? 'smart' : 'casual';
+    settings = saveSettings({ ...settings, difficulty: newDiff });
+    controller.setDifficulty(newDiff === 'casual' ? AI_DIFFICULTY.CASUAL : AI_DIFFICULTY.SMART);
+    syncSettingsModal();
+});
+animSelect.addEventListener('change', () => {
+    settings = saveSettings({ ...settings, animationSpeed: animSelect.value });
+    configureMotion(settings);
+});
+document.getElementById('settings-close-btn').addEventListener('click', closeSettingsModal);
 
 // Fair-information helper popovers remain non-modal but move focus to their
 // close control so keyboard/screen-reader users immediately enter the surface.

@@ -264,7 +264,7 @@
     left: 50%;
     top: 48%;
     transform: translate(-50%, -50%);
-    z-index: 6;
+    z-index: 9;
     display: grid;
     justify-items: center;
     gap: .55rem;

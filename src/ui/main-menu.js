@@ -1,7 +1,20 @@
 import { loadSettings, saveSettings } from '../storage/settings.js';
 import { loadGame } from '../storage/saveGame.js';
+import { loadHistory } from '../storage/history.js';
 import { activateFocusTrap, deactivateFocusTrap } from './focusTrap.js';
 import { configureMotion } from './motion.js';
+
+// Show player rating badge if any matches have been played
+function syncRatingBadge() {
+    const badge = document.getElementById('menu-rating-badge');
+    const ratingValue = document.getElementById('menu-rating-value');
+    if (!badge || !ratingValue) return;
+    const history = loadHistory();
+    if (history.totalMatches > 0) {
+        ratingValue.textContent = history.rating;
+        badge.hidden = false;
+    }
+}
 
 const TUTORIAL_COMPLETE_KEY = 'omiTutorialCompleted';
 
@@ -91,3 +104,4 @@ settingsBackdrop.addEventListener('click', event => {
 
 window.addEventListener('pageshow', syncControls);
 syncControls();
+syncRatingBadge();
