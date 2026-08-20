@@ -1,0 +1,12 @@
+# Node modules and dependencies
+node_modules/
+package-lock.json
+
+# Temporary files and scripts
+screenshots/
+take_screenshots.cjs
+
+# Editor and OS specifics
+.DS_Store
+.vscode/
+*.log

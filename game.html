@@ -41,9 +41,6 @@
             <button class="icon-btn" id="hint-btn" type="button" title="Get a fair-play hint" aria-label="Get a hint" aria-controls="hint-popover" aria-expanded="false">
                 <span aria-hidden="true">?</span>
             </button>
-            <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" aria-controls="previous-trick-popover" aria-expanded="false" disabled>
-                <span aria-hidden="true">↶</span>
-            </button>
             <button class="icon-btn" id="mute-btn" type="button" title="Toggle sound" aria-label="Toggle sound">🔊</button>
             <a class="icon-btn icon-link" href="main-menu.html" title="Main menu" aria-label="Main menu">☰</a>
         </div>
@@ -98,7 +95,12 @@
 
             <!-- CENTER TRICK ZONE -->
             <section id="center-middle" class="trick-zone" aria-label="Current trick">
-                <div class="trick-zone-heading">Current Trick</div>
+                <div class="trick-zone-heading">
+                    <span>Current Trick</span>
+                    <button class="icon-btn" id="previous-trick-btn" type="button" title="View previous trick" aria-label="View previous trick" aria-controls="previous-trick-popover" aria-expanded="false" disabled>
+                        <span aria-hidden="true">↶</span>
+                    </button>
+                </div>
                 <div id="trick-table">
                     <div id="deck-pile" aria-label="Deck">
                         <div class="deck-card"></div>
