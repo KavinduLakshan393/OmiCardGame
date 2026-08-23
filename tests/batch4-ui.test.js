@@ -1,13 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { CARD_PIP_LAYOUTS } from '../src/ui/cardRenderer.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { createCardElement, createMiniCardElement } from '../src/ui/cardRenderer.js';
+import { SUITS, RANKS } from '../src/engine/constants.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-test('production number-card pip layouts contain the correct pip count', () => {
-    for (const rank of ['7', '8', '9', '10']) {
-        assert.equal(CARD_PIP_LAYOUTS[rank].length, Number(rank));
+test('production 32-card artwork image assets are present for all suits and ranks', () => {
+    assert.equal(typeof createCardElement, 'function');
+    assert.equal(typeof createMiniCardElement, 'function');
+
+    for (const suit of SUITS) {
+        const suitInitial = suit.charAt(0).toUpperCase();
+        for (const rank of RANKS) {
+            const assetPath = join(__dirname, '..', 'assets', 'cards', `${suitInitial}${rank}.png`);
+            assert.ok(existsSync(assetPath), `Missing card artwork image: ${suitInitial}${rank}.png`);
+        }
     }
 });
 
@@ -28,11 +40,12 @@ test('game stylesheet composes table, cards and animation layers', () => {
     assert.doesNotMatch(css, /game-legacy\.css/);
 });
 
-test('playing-card renderer no longer uses chess-piece placeholders', () => {
+test('playing-card renderer uses production card artwork and creates card elements', () => {
     const renderer = read('../src/ui/cardRenderer.js');
     assert.doesNotMatch(renderer, /♔|♕|♘/);
-    assert.match(renderer, /createCourtArt/);
-    assert.match(renderer, /pip-grid/);
+    assert.match(renderer, /assets\/cards/);
+    assert.match(renderer, /createCardElement/);
+    assert.match(renderer, /createMiniCardElement/);
 });
 
 test('gameplay animation helpers remain outside the engine', () => {
@@ -49,3 +62,4 @@ test('mobile gameplay includes coarse-pointer two-tap selection support', () => 
     assert.match(script, /selectedCardIndex/);
     assert.match(script, /Tap again to play/);
 });
+
