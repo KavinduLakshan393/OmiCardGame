@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
+    "test": "node scripts/test-all.mjs",
     "check": "node scripts/check.mjs",
     "qa": "node scripts/qa.mjs",
     "verify": "npm run check && npm test && npm run qa"

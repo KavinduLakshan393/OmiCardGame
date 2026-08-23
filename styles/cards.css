@@ -78,10 +78,14 @@
     border-color: rgba(232,196,106,.82);
     box-shadow: 0 12px 28px rgba(0,0,0,.3), 0 0 0 2px rgba(232,196,106,.16);
 }
+.card-wrapper[disabled] {
+    pointer-events: none;
+}
 .card.card-invalid {
     opacity: .42;
     filter: saturate(.55) brightness(.72);
     cursor: not-allowed;
+    pointer-events: none;
 }
 .card.card-selected {
     box-shadow: 0 16px 36px rgba(0,0,0,.36), 0 0 0 3px rgba(232,196,106,.24);

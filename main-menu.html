@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/typography.css">
     <link rel="stylesheet" href="styles/menu.css">
+    <link rel="stylesheet" href="styles/history.css">
 </head>
 <body class="menu-page">
     <main class="menu-shell">
@@ -22,6 +23,7 @@
             </a>
 
             <div class="menu-top-actions">
+                <span id="menu-rating-badge" class="menu-rating-badge" hidden>⭐ <span id="menu-rating-value">1000</span></span>
                 <button class="round-icon-button" id="settings-button" type="button" aria-label="Open settings">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="12" cy="12" r="3.1"></circle>
@@ -63,6 +65,11 @@
                         <span>Settings</span>
                         <span class="action-caption">Game preferences</span>
                     </button>
+
+                    <a class="menu-action menu-action-secondary" id="history-link" href="history.html">
+                        <span>My History</span>
+                        <span class="action-caption" id="history-caption">View match records &amp; rating</span>
+                    </a>
                 </nav>
             </div>
 

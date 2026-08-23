@@ -54,7 +54,7 @@ function validateHtml(page) {
 }
 
 const pageData = new Map();
-for (const page of ['index.html', 'main-menu.html', 'tutorial.html', 'game.html']) {
+for (const page of ['index.html', 'main-menu.html', 'tutorial.html', 'game.html', 'history.html']) {
     pageData.set(page, validateHtml(page));
 }
 
@@ -71,6 +71,8 @@ validateLiteralIds('script.js', 'game.html');
 validateLiteralIds('src/ui/welcome.js', 'index.html');
 validateLiteralIds('src/ui/main-menu.js', 'main-menu.html');
 validateLiteralIds('src/ui/tutorial.js', 'tutorial.html');
+validateLiteralIds('src/ui/history-page.js', 'history.html');
+
 
 const engineFiles = collectFiles('src/engine').filter(path => path.endsWith('.js'));
 const controllerFiles = collectFiles('src/controllers').filter(path => path.endsWith('.js'));

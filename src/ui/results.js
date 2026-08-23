@@ -32,7 +32,7 @@ export function handResultView({ result, state }) {
         title: result.isKapothi ? 'Kapothi!' : `${winner} win`,
         tone: result.winnerTeam === 0 ? 'win' : 'loss',
         trickScore: `${state.teamTricks[0]} – ${state.teamTricks[1]}`,
-        tokenAward: `+${result.tokensAwarded} token${result.tokensAwarded === 1 ? '' : 's'}`,
+        tokenAward: `${result.winnerTeam === 0 ? '+' : '-'}${result.tokensAwarded} token${result.tokensAwarded === 1 ? '' : 's'}`,
         carry: result.carryAwarded > 0
             ? `${result.baseTokens} base + ${result.carryAwarded} carry`
             : `${result.baseTokens} base token${result.baseTokens === 1 ? '' : 's'}`,

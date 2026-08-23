@@ -1,7 +1,7 @@
 import { cardId, rankValue, suitSymbol } from '../engine/cards.js';
 import { PHASE } from '../engine/constants.js';
 import { partnerOf } from '../engine/players.js';
-import { resolveTrick } from '../engine/trick.js';
+import { cardStrength, resolveTrick } from '../engine/trick.js';
 
 function cardLabel(card) {
     return `${card.rank}${suitSymbol(card.suit)}`;
@@ -64,11 +64,13 @@ export function buildHumanHint(state, humanPlayerId = 0) {
     const leadSuit = state.currentTrick[0].card.suit;
     const matching = hand.filter(card => card.suit === leadSuit);
     const legalCards = matching.length ? matching : hand;
-    const currentWinner = resolveTrick(state.currentTrick, state.trump).winner;
+    const currentTrickResult = resolveTrick(state.currentTrick, state.trump);
+    const currentWinner = currentTrickResult.winner;
     const partner = partnerOf(humanPlayerId);
 
     if (currentWinner === partner) {
-        const lowest = [...legalCards].sort((a, b) => rankValue(a.rank) - rankValue(b.rank))[0];
+        const nonTrumpLow = legalCards.filter(card => card.suit !== state.trump).sort((a, b) => rankValue(a.rank) - rankValue(b.rank));
+        const lowest = nonTrumpLow[0] ?? [...legalCards].sort((a, b) => rankValue(a.rank) - rankValue(b.rank))[0];
         return {
             title: matching.length ? `Follow ${leadSuit}` : `You are void in ${leadSuit}`,
             message: `${matching.length ? `You must follow ${leadSuit}. ` : `You may play any suit. `}Your partner is currently winning, so preserving strength is often sensible. Your lowest legal card is ${cardLabel(lowest)}.`,
@@ -76,9 +78,10 @@ export function buildHumanHint(state, humanPlayerId = 0) {
         };
     }
 
+    const winningStrength = cardStrength(currentTrickResult.winningCard, leadSuit, state.trump);
     const winningCards = legalCards
-        .filter(card => resolveTrick([...state.currentTrick, { player: humanPlayerId, card }], state.trump).winner === humanPlayerId)
-        .sort((a, b) => rankValue(a.rank) - rankValue(b.rank));
+        .filter(card => cardStrength(card, leadSuit, state.trump) > winningStrength)
+        .sort((a, b) => cardStrength(a, leadSuit, state.trump) - cardStrength(b, leadSuit, state.trump));
 
     if (winningCards.length) {
         const lowestWinner = winningCards[0];
@@ -89,10 +92,12 @@ export function buildHumanHint(state, humanPlayerId = 0) {
         };
     }
 
-    const lowest = [...legalCards].sort((a, b) => rankValue(a.rank) - rankValue(b.rank))[0];
+    const nonTrumpLow = legalCards.filter(card => card.suit !== state.trump).sort((a, b) => rankValue(a.rank) - rankValue(b.rank));
+    const lowest = nonTrumpLow[0] ?? [...legalCards].sort((a, b) => rankValue(a.rank) - rankValue(b.rank))[0];
     return {
         title: matching.length ? `Follow ${leadSuit}` : `You are void in ${leadSuit}`,
         message: `${matching.length ? `You must follow ${leadSuit}. ` : `You may play any suit. `}None of your legal cards can currently take the lead, so ${cardLabel(lowest)} preserves the most rank strength.`,
         cardId: cardId(lowest),
     };
 }
+

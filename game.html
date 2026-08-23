@@ -42,7 +42,7 @@
                 <span aria-hidden="true">?</span>
             </button>
             <button class="icon-btn" id="mute-btn" type="button" title="Toggle sound" aria-label="Toggle sound">🔊</button>
-            <a class="icon-btn icon-link" href="main-menu.html" title="Main menu" aria-label="Main menu">☰</a>
+            <button class="icon-btn" id="menu-btn" type="button" title="Game menu" aria-label="Open game menu" aria-controls="pause-menu" aria-expanded="false">☰</button>
         </div>
     </header>
 
@@ -200,6 +200,7 @@
         <div class="eyebrow" id="match-result-eyebrow">Match Complete</div>
         <h2 id="match-winner-text">Match Complete</h2>
         <p class="result-summary" id="match-result-summary"></p>
+        <div id="match-rating-delta" class="rating-delta-badge" hidden></div>
         <div class="result-score-grid result-score-grid--match">
             <div><span>Final Tokens</span><strong id="match-final-score">0 – 0</strong></div>
             <div><span>Hands</span><strong id="match-hands-played">0</strong></div>
@@ -261,6 +262,60 @@
         </div>
         <div class="stats-section"><div class="mvp-box">Most tricks: <strong id="stats-mvp">—</strong></div></div>
         <div class="stats-close-wrap"><button id="stats-close-btn" class="btn btn-secondary" type="button">Close</button></div>
+    </div>
+</div>
+
+<div id="pause-menu" class="pause-menu hidden" role="dialog" aria-modal="true" aria-labelledby="pause-menu-title">
+    <div class="pause-menu-backdrop"></div>
+    <div class="pause-menu-panel">
+        <div class="pause-menu-header">
+            <span class="eyebrow">Game Paused</span>
+            <h2 id="pause-menu-title" class="pause-menu-title">Menu</h2>
+        </div>
+        <nav class="pause-menu-nav" aria-label="Game menu options">
+            <button id="pause-continue-btn" class="pause-menu-item" type="button">
+                <span class="pause-menu-icon">▶</span>
+                <span class="pause-menu-label">Continue</span>
+            </button>
+            <button id="pause-stats-btn" class="pause-menu-item" type="button">
+                <span class="pause-menu-icon">📊</span>
+                <span class="pause-menu-label">View Statistics</span>
+            </button>
+            <button id="pause-settings-btn" class="pause-menu-item" type="button">
+                <span class="pause-menu-icon">⚙</span>
+                <span class="pause-menu-label">Settings</span>
+            </button>
+            <a href="main-menu.html" class="pause-menu-item pause-menu-item--danger">
+                <span class="pause-menu-icon">⬅</span>
+                <span class="pause-menu-label">Back to Main Menu</span>
+            </a>
+        </nav>
+    </div>
+</div>
+
+<div id="settings-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div id="settings-box">
+        <div class="eyebrow">Preferences</div>
+        <h2 id="settings-title">Settings</h2>
+        <div class="settings-section">
+            <label class="settings-row">
+                <span class="settings-label">Sound</span>
+                <button id="settings-sound-btn" class="toggle-btn" type="button" role="switch" aria-checked="true">On</button>
+            </label>
+            <label class="settings-row">
+                <span class="settings-label">Difficulty</span>
+                <button id="settings-difficulty-btn" class="toggle-btn" type="button" role="switch" aria-checked="true">Smart</button>
+            </label>
+            <label class="settings-row">
+                <span class="settings-label">Animation Speed</span>
+                <select id="settings-anim-select" class="settings-select">
+                    <option value="relaxed">Relaxed</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="fast">Fast</option>
+                </select>
+            </label>
+        </div>
+        <div class="stats-close-wrap"><button id="settings-close-btn" class="btn btn-secondary" type="button">Close</button></div>
     </div>
 </div>
 
