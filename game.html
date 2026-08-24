@@ -269,54 +269,81 @@
     <div class="pause-menu-backdrop"></div>
     <div class="pause-menu-panel">
         <div class="pause-menu-header">
-            <span class="eyebrow">Game Paused</span>
-            <h2 id="pause-menu-title" class="pause-menu-title">Menu</h2>
+            <div class="suit-crown pause-crown" aria-hidden="true">
+                <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
+            </div>
+            <h2 id="pause-menu-title" class="pause-menu-title">Game Paused</h2>
+            <p class="pause-menu-subtitle">Single Player Match</p>
         </div>
         <nav class="pause-menu-nav" aria-label="Game menu options">
-            <button id="pause-continue-btn" class="pause-menu-item" type="button">
-                <span class="pause-menu-icon">▶</span>
+            <button id="pause-continue-btn" class="pause-menu-item pause-menu-item-primary" type="button">
                 <span class="pause-menu-label">Continue</span>
+                <span class="pause-menu-caption">Resume match</span>
             </button>
             <button id="pause-stats-btn" class="pause-menu-item" type="button">
-                <span class="pause-menu-icon">📊</span>
                 <span class="pause-menu-label">View Statistics</span>
+                <span class="pause-menu-caption">Tricks &amp; match performance</span>
             </button>
             <button id="pause-settings-btn" class="pause-menu-item" type="button">
-                <span class="pause-menu-icon">⚙</span>
                 <span class="pause-menu-label">Settings</span>
+                <span class="pause-menu-caption">Audio, speed &amp; difficulty</span>
             </button>
             <a href="main-menu.html" class="pause-menu-item pause-menu-item--danger">
-                <span class="pause-menu-icon">⬅</span>
                 <span class="pause-menu-label">Back to Main Menu</span>
+                <span class="pause-menu-caption">Return to title screen</span>
             </a>
         </nav>
     </div>
 </div>
 
-<div id="settings-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <div id="settings-box">
-        <div class="eyebrow">Preferences</div>
-        <h2 id="settings-title">Settings</h2>
-        <div class="settings-section">
-            <label class="settings-row">
-                <span class="settings-label">Sound</span>
-                <button id="settings-sound-btn" class="toggle-btn" type="button" role="switch" aria-checked="true">On</button>
-            </label>
-            <label class="settings-row">
-                <span class="settings-label">Difficulty</span>
-                <button id="settings-difficulty-btn" class="toggle-btn" type="button" role="switch" aria-checked="true">Smart</button>
-            </label>
-            <label class="settings-row">
-                <span class="settings-label">Animation Speed</span>
-                <select id="settings-anim-select" class="settings-select">
+<div id="settings-modal" class="settings-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <section class="settings-panel">
+        <div class="settings-header">
+            <div>
+                <h2 class="settings-title" id="settings-title">Settings</h2>
+                <p class="settings-copy">Preferences apply across the single-player experience.</p>
+            </div>
+            <button class="settings-close" id="settings-close-btn" type="button" aria-label="Close settings">×</button>
+        </div>
+
+        <div class="settings-grid">
+            <div class="setting-field">
+                <label for="difficulty-setting">AI difficulty</label>
+                <select id="difficulty-setting">
+                    <option value="smart">Smart</option>
+                    <option value="casual">Casual</option>
+                </select>
+            </div>
+
+            <div class="setting-field">
+                <label for="sound-setting">Sound</label>
+                <select id="sound-setting">
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                </select>
+            </div>
+
+            <div class="setting-field">
+                <label for="animation-speed-setting">Animation speed</label>
+                <select id="animation-speed-setting">
                     <option value="relaxed">Relaxed</option>
-                    <option value="normal" selected>Normal</option>
+                    <option value="normal">Normal</option>
                     <option value="fast">Fast</option>
                 </select>
-            </label>
+            </div>
+
+            <div class="setting-field">
+                <label for="reduced-motion-setting">Motion</label>
+                <select id="reduced-motion-setting">
+                    <option value="system">Use device setting</option>
+                    <option value="reduce">Reduce motion</option>
+                    <option value="full">Full motion</option>
+                </select>
+            </div>
         </div>
-        <div class="stats-close-wrap"><button id="settings-close-btn" class="btn btn-secondary" type="button">Close</button></div>
-    </div>
+
+        <p class="settings-note">Preferences are saved automatically and apply to new and resumed solo matches.</p>
+    </section>
 </div>
 
 <!-- Kept as a hidden instrumentation sink for existing diagnostic logging. -->
