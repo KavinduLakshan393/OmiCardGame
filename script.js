@@ -886,22 +886,24 @@ document.getElementById('pause-settings-btn').addEventListener('click', () => {
 
 // ── Settings Modal ────────────────────────────────────────────────────
 const settingsModal = document.getElementById('settings-modal');
-const soundSettingsBtn = document.getElementById('settings-sound-btn');
-const difficultyBtn = document.getElementById('settings-difficulty-btn');
-const animSelect = document.getElementById('settings-anim-select');
+const difficultySetting = document.getElementById('difficulty-setting');
+const soundSetting = document.getElementById('sound-setting');
+const animationSpeedSetting = document.getElementById('animation-speed-setting');
+const reducedMotionSetting = document.getElementById('reduced-motion-setting');
+const settingsCloseBtn = document.getElementById('settings-close-btn');
 
 function syncSettingsModal() {
-    soundSettingsBtn.textContent = runtime.muted ? 'Off' : 'On';
-    soundSettingsBtn.setAttribute('aria-checked', String(!runtime.muted));
-    difficultyBtn.textContent = settings.difficulty === 'casual' ? 'Casual' : 'Smart';
-    difficultyBtn.setAttribute('aria-checked', String(settings.difficulty !== 'casual'));
-    animSelect.value = settings.animationSpeed ?? 'normal';
+    settings = loadSettings();
+    difficultySetting.value = settings.difficulty;
+    soundSetting.value = (!runtime.muted && settings.sound) ? 'on' : 'off';
+    animationSpeedSetting.value = settings.animationSpeed ?? 'normal';
+    reducedMotionSetting.value = settings.reducedMotion ?? 'system';
 }
 
 function openSettingsModal() {
     syncSettingsModal();
     openModalSurface(settingsModal, {
-        initialFocus: document.getElementById('settings-close-btn'),
+        initialFocus: settingsCloseBtn,
         onEscape: closeSettingsModal,
     });
 }
@@ -909,24 +911,33 @@ function closeSettingsModal() {
     closeModalSurface(settingsModal);
 }
 
-soundSettingsBtn.addEventListener('click', () => {
-    runtime.muted = !runtime.muted;
-    Sound.setEnabled(!runtime.muted);
-    settings = saveSettings({ ...settings, sound: !runtime.muted });
+function commitGameSettings() {
+    const isSoundOn = soundSetting.value === 'on';
+    runtime.muted = !isSoundOn;
+    Sound.setEnabled(isSoundOn);
     updateMuteButton();
-    syncSettingsModal();
-});
-difficultyBtn.addEventListener('click', () => {
-    const newDiff = settings.difficulty === 'casual' ? 'smart' : 'casual';
-    settings = saveSettings({ ...settings, difficulty: newDiff });
+
+    const newDiff = difficultySetting.value === 'casual' ? 'casual' : 'smart';
     controller.setDifficulty(newDiff === 'casual' ? AI_DIFFICULTY.CASUAL : AI_DIFFICULTY.SMART);
-    syncSettingsModal();
-});
-animSelect.addEventListener('change', () => {
-    settings = saveSettings({ ...settings, animationSpeed: animSelect.value });
+
+    settings = saveSettings({
+        difficulty: newDiff,
+        sound: isSoundOn,
+        animationSpeed: animationSpeedSetting.value,
+        reducedMotion: reducedMotionSetting.value,
+    });
     configureMotion(settings);
+}
+
+difficultySetting.addEventListener('change', commitGameSettings);
+soundSetting.addEventListener('change', commitGameSettings);
+animationSpeedSetting.addEventListener('change', commitGameSettings);
+reducedMotionSetting.addEventListener('change', commitGameSettings);
+settingsCloseBtn.addEventListener('click', closeSettingsModal);
+
+settingsModal.addEventListener('click', event => {
+    if (event.target === settingsModal) closeSettingsModal();
 });
-document.getElementById('settings-close-btn').addEventListener('click', closeSettingsModal);
 
 // Fair-information helper popovers remain non-modal but move focus to their
 // close control so keyboard/screen-reader users immediately enter the surface.

@@ -7,37 +7,56 @@
     <meta name="description" content="View your Omi match history, rating, and overall statistics.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/tokens.css">
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/typography.css">
+    <link rel="stylesheet" href="styles/menu.css">
     <link rel="stylesheet" href="styles/history.css">
 </head>
-<body class="history-page">
+<body class="history-page menu-page">
+    <div class="history-bg-glow" aria-hidden="true"></div>
+
     <header class="history-topbar">
-        <a class="history-back" href="main-menu.html" aria-label="Back to main menu">
+        <a class="menu-brand" href="main-menu.html" aria-label="Omi main menu">
+            <span class="brand-wordmark">Omi</span>
+            <span class="brand-suits" aria-hidden="true">♠ ♥ ♦ ♣</span>
+        </a>
+        <a class="history-back-btn" href="main-menu.html" aria-label="Back to main menu">
             <span aria-hidden="true">←</span> Main Menu
         </a>
-        <h1 class="history-page-title">My History</h1>
     </header>
 
     <main class="history-shell">
+        <div class="history-header">
+            <div class="suit-crown" aria-hidden="true">
+                <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
+            </div>
+            <h1 class="history-title">My History</h1>
+            <p class="history-subtitle">Match records, statistics &amp; player rating</p>
+        </div>
 
         <!-- Rating Card -->
         <section class="rating-card" aria-labelledby="rating-heading">
             <div class="rating-card-inner">
                 <div class="rating-block">
-                    <span class="rating-label" id="rating-heading">Rating</span>
-                    <span class="rating-value" id="history-rating">—</span>
+                    <span class="rating-label" id="rating-heading">Player Rating</span>
+                    <span class="rating-value" id="history-rating">1000</span>
                 </div>
                 <div class="rating-sparkline-wrap">
                     <svg id="rating-sparkline" class="rating-sparkline" viewBox="0 0 200 48" aria-hidden="true" preserveAspectRatio="none"></svg>
                     <span class="sparkline-caption" id="sparkline-caption"></span>
                 </div>
                 <div class="rating-record">
-                    <span class="record-wins" id="history-wins">0W</span>
-                    <span class="record-sep">/</span>
-                    <span class="record-losses" id="history-losses">0L</span>
+                    <span class="record-badge record-badge--wins">
+                        <span class="record-num" id="history-wins">0W</span>
+                        <span class="record-lbl">Wins</span>
+                    </span>
+                    <span class="record-divider" aria-hidden="true">/</span>
+                    <span class="record-badge record-badge--losses">
+                        <span class="record-num" id="history-losses">0L</span>
+                        <span class="record-lbl">Losses</span>
+                    </span>
                 </div>
             </div>
         </section>
@@ -67,12 +86,20 @@
 
         <!-- Match History Table -->
         <section class="history-section" aria-labelledby="history-heading">
-            <h2 class="history-section-title" id="history-heading">Match History</h2>
+            <h2 class="history-section-title" id="history-heading">Recent Matches</h2>
             <div id="history-list" class="history-list">
-                <p class="history-empty-state" id="history-empty">No matches played yet. <a href="game.html">Start a game!</a></p>
+                <div class="history-empty-state" id="history-empty">
+                    <div class="empty-icon" aria-hidden="true">🂠</div>
+                    <p class="empty-text">No matches played yet.</p>
+                    <a class="empty-cta-btn" href="game.html">Start a Game</a>
+                </div>
             </div>
         </section>
 
+        <footer class="history-footer">
+            <span>Single Player v1</span>
+            <span>Standard Omi · 10 Token Match</span>
+        </footer>
     </main>
 
     <script type="module" src="src/ui/history-page.js"></script>
